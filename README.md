@@ -1,113 +1,200 @@
 # Predictive Modeling of Rootzone Variables Using Greenhouse Data
 
-This repository contains Jupyter notebooks for building time-series datasets from greenhouse + weather data and training/predicting different targets (micro-climate, internal radiation, soil temperature, and rootzone pH/EC).
+This project develops a machine learning soft-sensor for greenhouse root-zone chemistry.
+The soft-sensor predicts:
+- `pH` (acidity)
+- `EC` (electrical conductivity / salinity)
 
-## Repository structure
+The practical goal is to replace or reduce dependence on expensive, drifting, or hard-to-maintain physical root-zone sensors by inferring chemical state from available greenhouse signals.
+
+## End Goal
+
+Build a robust, deployment-ready soft-sensor that:
+- Predicts current root-zone `pH` and `EC` continuously.
+- Remains stable under noisy agricultural data.
+- Handles irregular sampling gaps between lab/sensor measurements.
+- Learns online (walk-forward retraining) as new true measurements arrive.
+- Provides actionable confidence for fertigation and irrigation control decisions.
+
+## Why This Problem Is Hard
+
+Root-zone chemistry behaves like a partially observed dynamic system:
+- Time gaps between true `pH/EC` labels are uneven.
+- Irrigation/fertigation effects are delayed (biophysical lag and mixing/settling time).
+- Greenhouse data is noisy and contains operational disturbances.
+- Label count is small relative to high-frequency environmental logs.
+
+In the current `master.csv`, labeled samples are sparse (`109` joint pH/EC points; `108` transitions), with highly variable gaps (median about `6.1h`, long-tail gaps up to about `408h`).
+
+## Modeling Strategy
+
+Core modeling choices used in current root-zone notebooks:
+- Walk-forward validation: train on past transitions, predict forward, retrain whenever a new actual root-zone reading arrives.
+- Delta modeling: predict `target(t1) - target(t0)` rather than absolute value.
+- Anchor-state conditioning: include `ph0` and `ec0` as system state at start of each interval.
+- Windowed drivers: irrigation, fertigation, ET0, climate, canopy, event recency, and diurnal features extracted on `[t0, t1)` windows.
+- Robust EC objective: pseudohuber loss for EC to reduce sensitivity to outliers/noise.
+
+## Repository Structure
 
 ```
 data/
-  raw/         # source data (original exports; do not edit)
-  processed/   # derived datasets, predictions, and metrics
-scripts/       # Jupyter notebooks (.ipynb)
-plots/         # saved figures (.png)
-models/        # saved model artifacts (empty unless you export models)
+  raw/         source files (do not edit)
+  processed/   derived datasets, predictions, metrics
+scripts/       Jupyter notebooks (.ipynb) and local working CSV copy
+plots/         saved figures
 ```
 
-All notebooks in `scripts/` include a small helper cell that defines `ROOT`, `RAW`, `PROCESSED`, `PLOTS`, so paths work even when running notebooks from inside the `scripts/` folder.
+## Data Overview
 
-## Notebooks (scripts)
+### Raw Data (`data/raw/`)
 
-### `scripts/soil_temp_C_pred.ipynb` - Soil temperature prediction
-Builds a soil temperature time-series prediction based on external weather + radiation.
-- Inputs: `data/raw/Data Final OG.csv`, `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`
-- Output: `data/processed/soil_temp_predictions_full_range.csv`
+Primary sources used across the pipeline:
+- `bet_dagan_weather.csv`: external weather.
+- `bet_dagan_radiation.csv`: external radiation.
+- `radiation.csv`: internal greenhouse radiation observations.
+- `Data Final OG.csv`: original dataset used for soil-temperature modeling.
+- `Data Logger Final.xlsx`: greenhouse logger export.
+- `T&RH&ETo_10min&daily_10Aug_18Sep.xlsx`: micro-climate base signals.
+- `PH+EC Final.xlsx`: sparse pH/EC measurements.
+- `Irrigation + ALL Elemental Fractions schedule for one plant (100N).xlsx`: irrigation/fertigation schedule.
+- `Daily Canopy Cover Values.xlsx`: crop canopy progression.
+- `Nitrogen Samples - one group.xlsx`: additional agronomic sampling.
 
-### `scripts/micro_climate_internal_radiation_model.ipynb` - Internal radiation prediction (XGBoost)
-Predicts internal greenhouse radiation using external weather + radiation.
-- Inputs: `data/raw/radiation.csv`, `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`
-- Output: `data/processed/internal_radiation_predictions_full_weather_range.csv`
+### Processed Data (`data/processed/`)
 
-### `scripts/micro_climate_model.ipynb` - Micro-climate model (XGBoost)
-Predicts greenhouse micro-climate targets (ETo / air temperature / RH) using external weather + radiation time series.
-- Inputs: `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`, `data/processed/rh_et0.csv`
-- Output: `data/processed/xgb_predictions_full_weather_range.csv`
+Key artifacts already produced:
+- `micro_climate_rh_t_et0.xlsx`
+- `rh_et0.csv`
+- `soil_temp_predictions_full_range.csv`
+- `internal_radiation_predictions_full_weather_range.csv`
+- `xgb_predictions_full_weather_range.csv`
+- `master.csv`
+- `rootzone_continuous_model_predictions.csv`
+- `rootzone_continuous_model_eval_actual_rows.csv`
+- `rf_rootzone_model_predictions.csv`
+- `Rootzone_per_interval_errors.csv`
+- `MicroClimate_metrics_all_targets_1day.csv`
+- `MicroClimate_predictions_all_targets_1day.csv`
+- `metrics_all_targets_3day_3daystep.csv`
+- `predictions_all_targets_3day_3daystep.csv`
 
-### `scripts/micro_climate_real_time_1day.ipynb` - Micro-climate real-time (1-day)
-Real-time/rolling micro-climate forecasting on a 1-day horizon.
-- Inputs: `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`, `data/processed/micro_climate_rh_t_et0.xlsx`
-- Outputs (current exports): `data/processed/MicroClimate_metrics_all_targets_1day.csv`, `data/processed/MicroClimate_predictions_all_targets_1day.csv`
+## Scripts and Their Role
 
-### `scripts/greenhouse_time_series_walkforward_3day.ipynb` - Greenhouse time-series (3-day)
-Walk-forward greenhouse time-series modeling (3-day setup).
-- Inputs: `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`, `data/processed/micro_climate_rh_t_et0.xlsx`
-- Outputs (current exports): `data/processed/metrics_all_targets_3day_3daystep.csv`, `data/processed/predictions_all_targets_3day_3daystep.csv`
+### Upstream Feature/Signal Builders
 
-### `scripts/micro_climate_real_time_3day.ipynb` - Micro-climate real-time (3-day)
-Real-time/rolling micro-climate forecasting on a 3-day horizon.
-- Inputs: `data/raw/bet_dagan_weather.csv`, `data/raw/bet_dagan_radiation.csv`, `data/processed/micro_climate_rh_t_et0.xlsx`
-- Outputs (current exports): `data/processed/metrics_all_targets_3day_3daystep.csv`, `data/processed/predictions_all_targets_3day_3daystep.csv`
+- `scripts/soil_temp_C_pred.ipynb`
+  - Predicts soil temperature from weather/radiation context.
+  - Produces `data/processed/soil_temp_predictions_full_range.csv`.
 
-### `scripts/RF_Rootzone_Model.ipynb` - Rootzone dataset + features + RF walk-forward
-Creates a master dataset (10-minute timeline), engineers event/climate features, and trains a RandomForest to predict changes between pH/EC observation anchors (walk-forward evaluation).
-- Inputs:
-  - `data/processed/micro_climate_rh_t_et0.xlsx`
-  - `data/raw/Irrigation + ALL Elemental Fractions schedule for one plant (100N).xlsx`
-  - `data/raw/PH+EC Final.xlsx`
-  - `data/raw/Daily Canopy Cover Values.xlsx`
-  - `data/processed/soil_temp_predictions_full_range.csv`
-- Outputs:
-  - `data/processed/master.csv`
-  - `data/processed/master_data.csv`
-  - `data/processed/rf_rootzone_model_predictions.csv`
-  - `data/processed/Rootzone_per_interval_errors.csv`
+- `scripts/micro_climate_internal_radiation_model.ipynb`
+  - Models internal radiation from external drivers.
+  - Produces `data/processed/internal_radiation_predictions_full_weather_range.csv`.
 
-### `scripts/RF_Rootzone_Realtime.ipynb` - Rootzone real-time evaluation
-Real-time/rolling evaluation for rootzone predictions.
-- Inputs: same master data sources as `scripts/RF_Rootzone_Model.ipynb`
-- Outputs (current exports): `data/processed/rf_rootzone_model_predictions.csv`, `data/processed/Rootzone_per_interval_errors.csv`
+- `scripts/micro_climate_model.ipynb`
+  - Predicts micro-climate targets (ET0, temperature, RH) over full horizon.
+  - Produces `data/processed/xgb_predictions_full_weather_range.csv`.
 
-### `scripts/target_data_exploration.ipynb` - Target exploration
-Explores raw target distributions and sampling behavior for pH/EC and micro-climate.
+- `scripts/micro_climate_real_time_1day.ipynb`
+  - Real-time 1-day walk-forward greenhouse forecasting.
+  - Produces `MicroClimate_metrics_all_targets_1day.csv` and `MicroClimate_predictions_all_targets_1day.csv`.
 
-## Data files
+- `scripts/micro_climate_real_time_3day.ipynb`
+  - Real-time 3-day walk-forward greenhouse forecasting.
 
-### Raw inputs (`data/raw/`)
-These are treated as the source of truth and should not be edited in-place.
-- `bet_dagan_weather.csv`: external (Bet Dagan) weather time series used as model inputs.
-- `bet_dagan_radiation.csv`: external (Bet Dagan) radiation time series used as model inputs.
-- `radiation.csv`: internal radiation sensor/export used as the training target for internal radiation modeling.
-- `Data Final OG.csv`: raw dataset used for soil temperature modeling (contains soil temperature observations).
-- `Data Logger Final.xlsx`: greenhouse logger export (kept as raw input).
-- `T&RH&ETo_10min&daily_10Aug_18Sep.xlsx`: combined/exported micro-climate related data (kept as raw input).
-- `PH+EC Final.xlsx`: sparse laboratory/measurement data for pH and EC with timestamps.
-- `Irrigation + ALL Elemental Fractions schedule for one plant (100N).xlsx`: irrigation/fertigation schedule events.
-- `Daily Canopy Cover Values.xlsx`: daily canopy cover values (joined by date).
-- `Nitrogen Samples - one group.xlsx`: nitrogen sampling data (kept as raw input).
+- `scripts/greenhouse_time_series_walkforward_3day.ipynb`
+  - 3-day walk-forward evaluation framework.
+  - Produces `metrics_all_targets_3day_3daystep.csv` and `predictions_all_targets_3day_3daystep.csv`.
 
-### Processed outputs (`data/processed/`)
-Derived files created by notebooks; safe to overwrite by re-running notebooks.
-- `micro_climate_rh_t_et0.xlsx`: internal micro-climate dataset (10-minute) used as a base timeline for modeling/joins.
-- `rh_et0.csv`: processed RH/ET0 time series used by `scripts/micro_climate_model.ipynb`.
-- `soil_temp_predictions_full_range.csv`: predicted soil temperature time series (10-minute).
-- `internal_radiation_predictions_full_weather_range.csv`: predicted internal radiation time series.
-- `internal_radiation_predictions_until_aug10.csv`: internal radiation predictions for a limited weather window.
-- `internal_radiation_micro_climate.csv`: merged internal radiation + micro-climate dataset.
-- `merged_predictions_internal_radiation.csv`: merged internal radiation predictions for evaluation/plots.
-- `xgb_predictions_full_weather_range.csv`: predicted micro-climate targets over the full weather range.
-- `xgb_predictions_until_aug10.csv`: predicted micro-climate targets for a limited weather window.
-- `master.csv`: master 10-minute dataset (current working export).
-- `master_data.csv`: master 10-minute dataset combining micro-climate + events + sparse pH/EC + soil temp + canopy.
-- `rf_rootzone_model_predictions.csv`: rootzone RF model predictions at anchor intervals.
-- `Rootzone_per_interval_errors.csv`: per-interval pH/EC errors from the walk-forward evaluation.
-- `MicroClimate_metrics_all_targets_1day.csv`, `MicroClimate_predictions_all_targets_1day.csv`: 1-day walk-forward metrics/predictions.
-- `metrics_all_targets_3day_3daystep.csv`, `predictions_all_targets_3day_3daystep.csv`: 3-day walk-forward metrics/predictions.
+### Root-Zone Modeling Notebooks
 
-## Typical run order (recommended)
-If you are rebuilding everything from scratch, a practical order is:
-1. `scripts/soil_temp_C_pred.ipynb` -> creates `data/processed/soil_temp_predictions_full_range.csv`
-2. `scripts/micro_climate_internal_radiation_model.ipynb` -> creates `data/processed/internal_radiation_predictions_full_weather_range.csv`
-3. `scripts/micro_climate_model.ipynb` -> creates `data/processed/xgb_predictions_full_weather_range.csv`
-4. `scripts/micro_climate_real_time_1day.ipynb` or `scripts/micro_climate_real_time_3day.ipynb` -> creates greenhouse walk-forward metrics/predictions
-5. `scripts/greenhouse_time_series_walkforward_3day.ipynb` -> creates 3-day walk-forward metrics/predictions
-6. `scripts/RF_Rootzone_Model.ipynb` or `scripts/RF_Rootzone_Realtime.ipynb` -> creates rootzone master/prediction outputs
+- `scripts/Interval_Rootzone_Model.ipynb`
+  - Earlier interval-based root-zone modeling baseline.
+
+- `scripts/Continuous_Rootzone_Model_With_Past.ipynb`
+  - Continuous root-zone setup with historical context.
+
+- `scripts/Continuous_Rootzone_Only_t0_To_t1.ipynb`
+  - Root-zone continuous walk-forward model (V1-style baseline).
+  - Delta prediction from anchor `t0` to query time `t1`.
+
+- `scripts/Continuous_Rootzone_Only_t0_To_t1_V2.ipynb`
+  - Refined version with weighted recency features and tuned pH parameters.
+
+- `scripts/Continuous_Rootzone_Only_t0_To_t1_V3.ipynb`
+  - Current hybrid notebook:
+  - pH model setup from V2 (best pH behavior).
+  - EC model setup from V1 (best EC behavior).
+  - Strict `[t0, t1)` feature window to avoid sample-time leakage.
+  - Warmup sweep to select best warmup by target.
+
+- `scripts/Rootzone_Rollout.ipynb`
+  - Rollout-style analysis and visualization for root-zone predictions.
+
+- `scripts/target_data_exploration.ipynb`
+  - Exploratory analysis of sampling density, target behavior, and distributions.
+
+## Process We Followed to Reach Current Models
+
+1. Built high-frequency greenhouse context signals (micro-climate, radiation, soil temperature).
+2. Merged these with irrigation/fertigation schedules and sparse pH/EC labels into `master.csv`.
+3. Developed interval and continuous walk-forward root-zone baselines.
+4. Switched from absolute target prediction to delta prediction for better state tracking.
+5. Added physically meaningful drivers:
+   - Irrigation and fertigation totals.
+   - Salt/acid effects and concentration proxies.
+   - ET0, VPD, canopy, transpiration pull.
+   - Event recency and diurnal timing.
+6. Added robust EC loss (`reg:pseudohubererror`) to handle noisy/outlier shifts.
+7. Iterated V1 -> V2 -> V3 to separate what works best for pH vs EC.
+
+## Current Performance Snapshot
+
+From saved notebook outputs on the same walk-forward setup (`warmup=50`):
+- V1 (`Continuous_Rootzone_Only_t0_To_t1.ipynb`)
+  - `pH MAE = 0.4542`
+  - `EC MAE = 0.1856`
+  - Naive baseline: `pH 0.9063`, `EC 0.1918`
+- V2 (`Continuous_Rootzone_Only_t0_To_t1_V2.ipynb`)
+  - `pH MAE = 0.449994` (improved vs V1)
+  - `EC MAE = 0.1875` (slightly worse vs V1)
+
+Interpretation:
+- pH gains more from richer climate/recency dynamics.
+- EC is more noise-sensitive and benefits from conservative/robust setup.
+
+## What Still Needs to Be Done
+
+Primary next workstream is model optimization and interpretability:
+- Re-run and benchmark V3 end-to-end against V1 and V2 using identical folds.
+- Expand warmup and retraining strategy search with strict walk-forward boundaries.
+- Perform feature-ablation by target to quantify marginal contribution.
+- Quantify directional effect size:
+  - Which features push pH/EC up or down.
+  - How effect changes with gap length and growth stage.
+- Improve uncertainty handling:
+  - Confidence bands or quantile models.
+  - Alerting when the model is extrapolating beyond observed dynamics.
+- Add drift monitoring and scheduled recalibration policy for season shifts.
+- Package model outputs for operational greenhouse decision support.
+
+## Recommended Rebuild Order
+
+If rebuilding from raw inputs:
+1. `scripts/soil_temp_C_pred.ipynb`
+2. `scripts/micro_climate_internal_radiation_model.ipynb`
+3. `scripts/micro_climate_model.ipynb`
+4. `scripts/micro_climate_real_time_1day.ipynb` and/or `scripts/micro_climate_real_time_3day.ipynb`
+5. `scripts/greenhouse_time_series_walkforward_3day.ipynb`
+6. Root-zone notebooks in sequence:
+   - `scripts/Interval_Rootzone_Model.ipynb`
+   - `scripts/Continuous_Rootzone_Only_t0_To_t1.ipynb`
+   - `scripts/Continuous_Rootzone_Only_t0_To_t1_V2.ipynb`
+   - `scripts/Continuous_Rootzone_Only_t0_To_t1_V3.ipynb`
+
+## Notes
+
+- `data/raw/` should remain immutable.
+- `data/processed/` files are reproducible artifacts and can be regenerated.
+- Keep notebook outputs versioned only when they represent benchmark checkpoints.
 
