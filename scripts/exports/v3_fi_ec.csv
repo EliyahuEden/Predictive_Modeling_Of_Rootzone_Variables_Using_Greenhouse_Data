@@ -1,0 +1,15 @@
+,importance
+log_ec_drive,0.1362744
+leaching_fraction,0.12950052
+temp_trend,0.11047238
+ec0,0.1095416
+ph0,0.06477253
+transpiration_pull,0.061160475
+salt_balance_t0_t1,0.06048913
+irr_total_t0_t1,0.054153197
+gap_hours,0.052205473
+fert_conc,0.050242975
+hrs_since_irr,0.046339404
+hrs_since_fert,0.043616075
+ET0_sum_t0_t1,0.042696916
+evapo_concentration,0.038534947
