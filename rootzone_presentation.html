@@ -417,7 +417,7 @@
 <!-- ══════════════ TIME SERIES ══════════════ -->
 <section id="timeseries">
   <h2 class="section-title">Predictions over time</h2>
-  <p class="section-sub">Top two charts: 10-minute model predictions (orange line) with actual labeled measurements (white dots) overlaid. Bottom two charts: labeled measurement points only — actual <span style="color:#facc15;font-weight:600">●</span> yellow vs predicted <span style="color:#f43f5e;font-weight:600">●</span> red dashed.</p>
+  <p class="section-sub">Top two charts: 10-minute model predictions (orange line) with actual labeled measurements (white dots) overlaid. Bottom two charts: labeled measurement points only — actual <span style="color:#f97316;font-weight:600">●</span> orange vs predicted <span style="color:#3b82f6;font-weight:600">●</span> blue dashed.</p>
 
   <div class="card mb">
     <div class="card-title" id="ts-ph-title">pH — 10-min predictions + actual measurements</div>
@@ -841,6 +841,10 @@ function buildTimeSeries() {
   const predPH=RAW.pred_ph, predEC=RAW.pred_ec;
   const actPH=RAW.actual_ph, actEC=RAW.actual_ec;
 
+  // Shared colours: orange = prediction, blue = actual measurement
+  const ORANGE = '#f97316';
+  const BLUE   = '#3b82f6';
+
   const tsLineOpts = (yLabel) => ({
     responsive:true, maintainAspectRatio:false,
     plugins:{
@@ -852,100 +856,61 @@ function buildTimeSeries() {
       y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true, text:yLabel, color:'#a8a69f', font:{size:11}}}
     }});
 
-  // 10-min pH: orange prediction line, white+green measurement dots
+  // 10-min charts: orange prediction line, blue dots for actual measurements
   mkChart('chart-ts-ph',{type:'line',data:{
     labels: predPH.map(r=>r.t.slice(5,16)),
     datasets:[
       {label:'10-min prediction', data:predPH.map(r=>r.v),
-        borderColor:'#f97316', borderWidth:1.5, pointRadius:0, tension:.1, fill:false},
+        borderColor:ORANGE, borderWidth:1.5, pointRadius:0, tension:.1, fill:false},
       {label:'Actual measurement', data:predPH.map(r=>{const m=actPH.find(a=>a.t===r.t);return m?m.v:null;}),
-        borderColor:'transparent', pointBackgroundColor:'#ffffff', pointBorderColor:'#22c55e',
-        pointBorderWidth:2.5, pointRadius:7, pointHoverRadius:10, showLine:false},
+        borderColor:'transparent', pointBackgroundColor:BLUE, pointBorderColor:'#ffffff',
+        pointBorderWidth:1.5, pointRadius:7, pointHoverRadius:10, showLine:false},
     ]
   },options:tsLineOpts('pH')});
 
-  // 10-min EC: orange prediction line, white+green measurement dots
   mkChart('chart-ts-ec',{type:'line',data:{
     labels: predEC.map(r=>r.t.slice(5,16)),
     datasets:[
       {label:'10-min prediction', data:predEC.map(r=>r.v),
-        borderColor:'#f97316', borderWidth:1.5, pointRadius:0, tension:.1, fill:false},
+        borderColor:ORANGE, borderWidth:1.5, pointRadius:0, tension:.1, fill:false},
       {label:'Actual measurement', data:predEC.map(r=>{const m=actEC.find(a=>a.t===r.t);return m?m.v:null;}),
-        borderColor:'transparent', pointBackgroundColor:'#ffffff', pointBorderColor:'#22c55e',
-        pointBorderWidth:2.5, pointRadius:7, pointHoverRadius:10, showLine:false},
+        borderColor:'transparent', pointBackgroundColor:BLUE, pointBorderColor:'#ffffff',
+        pointBorderWidth:1.5, pointRadius:7, pointHoverRadius:10, showLine:false},
     ]
   },options:tsLineOpts('EC (mS/cm)')});
 
-  // ── Eval-only AVP charts with error shading ──────────────────
-  // Strategy: render actual as bars (with custom colors showing +/- error),
-  // and overlay predicted as a line. This makes the difference immediately visible.
-
+  // Eval-only: orange actual, blue dashed predicted — no error bars
   const avpOpts = (yLabel) => ({
     responsive:true, maintainAspectRatio:false,
     plugins:{
       legend:{display:true, labels:{color:'#e8e6e0', boxWidth:14, font:{size:11}}},
       tooltip:{backgroundColor:'#1e2533', titleColor:'#e8e6e0', bodyColor:'#a8a69f', padding:8,
-        callbacks:{label: ctx => {
-          if(ctx.datasetIndex===0) return `Actual: ${(+ctx.raw).toFixed(3)}`;
-          if(ctx.datasetIndex===1) return `Predicted: ${(+ctx.raw).toFixed(3)}`;
-          return null;
-        }}}
+        callbacks:{label: ctx => `${ctx.dataset.label}: ${(+ctx.raw).toFixed(3)}`}}
     },
     scales:{
       x:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f', maxRotation:0, maxTicksLimit:12}},
       y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true, text:yLabel, color:'#a8a69f', font:{size:11}}}
     }});
 
-  // pH eval: actual as thick green line+dots, predicted as blue dashed+dots
-  // Plus a "difference" bar chart behind showing error magnitude
   const phE=ph.eval;
-  const phLabels=phE.map(r=>r.t1.slice(5,16));
-  const phActual=phE.map(r=>r.true);
-  const phPred  =phE.map(r=>r.pred);
-  const phErrBg =phE.map(r=>r.true>=r.pred?'rgba(250,204,21,.18)':'rgba(244,63,94,.18)');
-
-  mkChart('chart-avp-ph2',{type:'bar',data:{labels:phLabels,datasets:[
-    // error magnitude bars (background)
-    {label:'Error (actual−pred)',
-      data:phE.map(r=>({x:r.t1.slice(5,16), y:Math.max(r.true,r.pred), yBase:Math.min(r.true,r.pred)})),
-      backgroundColor:phErrBg, borderWidth:0, barPercentage:.6, categoryPercentage:.7,
-      parsing:{xAxisKey:'x', yAxisKey:'y'}, base:phE.map(r=>Math.min(r.true,r.pred)),
-      type:'bar', order:3},
-    // actual line
-    {label:'Actual', data:phActual, type:'line',
-      borderColor:'#facc15', borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#facc15',
-      tension:.12, fill:false, order:1},
-    // predicted line
-    {label:'Predicted', data:phPred, type:'line',
-      borderColor:'#f43f5e', borderWidth:2.5, borderDash:[5,3],
-      pointRadius:4.5, pointBackgroundColor:'#f43f5e',
-      tension:.12, fill:false, order:2},
-  ]},options:{...avpOpts('pH'),
-    scales:{...avpOpts('pH').scales,
-      x:{...avpOpts('pH').scales.x, stacked:false}}}});
+  mkChart('chart-avp-ph2',{type:'line',data:{labels:phE.map(r=>r.t1.slice(5,16)),datasets:[
+    {label:'Actual',    data:phE.map(r=>r.true), type:'line',
+      borderColor:ORANGE, borderWidth:2.5, pointRadius:5, pointBackgroundColor:ORANGE,
+      tension:.12, fill:false},
+    {label:'Predicted', data:phE.map(r=>r.pred), type:'line',
+      borderColor:BLUE, borderWidth:2.5, borderDash:[5,3],
+      pointRadius:4.5, pointBackgroundColor:BLUE, tension:.12, fill:false},
+  ]},options:avpOpts('pH')});
 
   const ecE=ec.eval;
-  const ecLabels=ecE.map(r=>r.t1.slice(5,16));
-  const ecActual=ecE.map(r=>r.true);
-  const ecPred  =ecE.map(r=>r.pred);
-  const ecErrBg =ecE.map(r=>r.true>=r.pred?'rgba(250,204,21,.18)':'rgba(244,63,94,.18)');
-
-  mkChart('chart-avp-ec2',{type:'bar',data:{labels:ecLabels,datasets:[
-    {label:'Error (actual−pred)',
-      data:ecE.map(r=>({x:r.t1.slice(5,16), y:Math.max(r.true,r.pred), yBase:Math.min(r.true,r.pred)})),
-      backgroundColor:ecErrBg, borderWidth:0, barPercentage:.6, categoryPercentage:.7,
-      parsing:{xAxisKey:'x', yAxisKey:'y'}, base:ecE.map(r=>Math.min(r.true,r.pred)),
-      type:'bar', order:3},
-    {label:'Actual', data:ecActual, type:'line',
-      borderColor:'#facc15', borderWidth:2.5, pointRadius:5, pointBackgroundColor:'#facc15',
-      tension:.12, fill:false, order:1},
-    {label:'Predicted', data:ecPred, type:'line',
-      borderColor:'#f43f5e', borderWidth:2.5, borderDash:[5,3],
-      pointRadius:4.5, pointBackgroundColor:'#f43f5e',
-      tension:.12, fill:false, order:2},
-  ]},options:{...avpOpts('EC (mS/cm)'),
-    scales:{...avpOpts('EC (mS/cm)').scales,
-      x:{...avpOpts('EC (mS/cm)').scales.x, stacked:false}}}});
+  mkChart('chart-avp-ec2',{type:'line',data:{labels:ecE.map(r=>r.t1.slice(5,16)),datasets:[
+    {label:'Actual',    data:ecE.map(r=>r.true), type:'line',
+      borderColor:ORANGE, borderWidth:2.5, pointRadius:5, pointBackgroundColor:ORANGE,
+      tension:.12, fill:false},
+    {label:'Predicted', data:ecE.map(r=>r.pred), type:'line',
+      borderColor:BLUE, borderWidth:2.5, borderDash:[5,3],
+      pointRadius:4.5, pointBackgroundColor:BLUE, tension:.12, fill:false},
+  ]},options:avpOpts('EC (mS/cm)')});
 }
 
 
