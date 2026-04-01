@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rootzone Soft-Sensor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+ :root {
+ --bg: #f8f7f4;
+ --surface: #ffffff;
+ --surface2: #f2f1ee;
+ --border: #e2e0db;
+ --text: #1a1916;
+ --muted: #6b6860;
+ --faint: #a8a69f;
+ --blue: #2563a8;
+ --blue-light: #dbeafe;
+ --teal: #0d7a5f;
+ --teal-light: #d1fae5;
+ --gap0: #2563a8;
+ --gap1: #92580a;
+ --gap2: #b91c1c;
+ --amber: #92580a;
+ --amber-light: #fef3c7;
+ --red: #b91c1c;
+ --red-light: #fee2e2;
+ --gray: #6b6860;
+ --gray-light: #f2f1ee;
+ --radius: 8px;
+ --radius-lg: 12px;
+ --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+ }
+ * { box-sizing: border-box; margin: 0; padding: 0; }
+ body { font-family: 'Georgia', serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.65; }
+ 
+ /* Header */
+ header { background: var(--text); color: #f8f7f4; padding: 2.5rem 2rem 2rem; }
+ header h1 { font-size: 1.75rem; font-weight: normal; letter-spacing: -0.01em; margin-bottom: 0.3rem; }
+ header p { font-size: 0.9rem; color: #a8a69f; font-family: 'Courier New', monospace; }
+ .header-meta { display: flex; gap: 1.5rem; margin-top: 1.2rem; flex-wrap: wrap; }
+ .header-stat { }
+ .header-stat .val { font-size: 1.6rem; font-weight: bold; color: #fff; font-family: sans-serif; }
+ .header-stat .lbl { font-size: 0.75rem; color: #a8a69f; text-transform: uppercase; letter-spacing: 0.06em; }
+ .badge-v3 { display: inline-block; background: #2563a8; color: #fff; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-family: sans-serif; font-weight: 600; vertical-align: middle; }
+ .badge-v4 { display: inline-block; background: #0d7a5f; color: #fff; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; font-family: sans-serif; font-weight: 600; vertical-align: middle; }
+
+ /* Nav */
+ nav { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+ nav ul { display: flex; list-style: none; padding: 0 2rem; overflow-x: auto; }
+ nav li a { display: block; padding: 0.85rem 1.1rem; font-size: 0.85rem; color: var(--muted); text-decoration: none; font-family: sans-serif; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s; }
+ nav li a:hover { color: var(--text); }
+ nav li a.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+
+ /* Layout */
+ main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+ section { display: none; }
+ section.active { display: block; }
+ .section-title { font-size: 1.3rem; font-weight: normal; margin-bottom: 0.25rem; }
+ .section-sub { font-size: 0.875rem; color: var(--muted); font-family: sans-serif; margin-bottom: 2rem; }
+
+ /* Cards */
+ .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; box-shadow: var(--shadow); }
+ .card-title { font-size: 0.75rem; font-family: sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--faint); margin-bottom: 1rem; }
+ .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+ .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+ .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+ .mb { margin-bottom: 1.25rem; }
+
+ /* Metric cards */
+ .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow); }
+ .metric .lbl { font-size: 0.75rem; font-family: sans-serif; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+ .metric .val { font-size: 1.8rem; font-weight: bold; font-family: sans-serif; }
+ .metric .sub { font-size: 0.75rem; color: var(--faint); font-family: sans-serif; margin-top: 2px; }
+ .metric .val.blue { color: var(--blue); }
+ .metric .val.teal { color: var(--teal); }
+ .metric .val.up { color: var(--teal); }
+
+ /* Charts */
+ .chart-wrap { position: relative; width: 100%; }
+ .h200 { height: 200px; }
+ .h260 { height: 260px; }
+ .h300 { height: 300px; }
+ .h340 { height: 340px; }
+ .h400 { height: 400px; }
+
+ /* Legend */
+ .legend { display: flex; gap: 16px; margin-bottom: 0.75rem; flex-wrap: wrap; }
+ .legend span { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; font-family: sans-serif; color: var(--muted); }
+ .legend .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+
+ /* Tables */
+ table { width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 0.85rem; }
+ th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); font-weight: 600; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+ td { padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+ tr:last-child td { border-bottom: none; }
+ .win { color: var(--teal); font-weight: 600; }
+ .lose { color: var(--red); }
+
+ /* Feature bar */
+ .feat-item { padding: 6px 0; border-bottom: 1px solid var(--border); font-family: sans-serif; font-size: 0.8rem; }
+ .feat-item:last-child { border-bottom: none; }
+ .feat-main { display: flex; flex-direction: column; gap: 3px; }
+ .feat-header { display: flex; align-items: center; gap: 10px; }
+ .feat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+ .feat-name.hist { color: var(--teal); }
+ .feat-track { flex: 0 0 110px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+ .feat-fill { height: 100%; border-radius: 3px; }
+ .feat-fill.window { background: var(--blue); }
+ .feat-fill.hist-bar { background: var(--teal); }
+ .feat-val { font-size: 0.75rem; color: var(--faint); width: 38px; text-align: right; flex-shrink: 0; }
+ .feat-desc { font-size: 0.73rem; color: var(--muted); line-height: 1.4; padding-left: 2px; }
+
+ /* Workflow steps */
+ .step { display: flex; gap: 14px; margin-bottom: 1.1rem; }
+ .step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-family: sans-serif; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+ .step-body .title { font-weight: bold; font-size: 0.95rem; margin-bottom: 2px; }
+ .step-body p { font-size: 0.875rem; color: var(--muted); font-family: sans-serif; line-height: 1.5; }
+
+ /* Pills */
+ .pill { display: inline-block; font-size: 0.72rem; padding: 2px 9px; border-radius: 20px; font-family: sans-serif; font-weight: 600; }
+ .pill-blue { background: var(--blue-light); color: var(--blue); }
+ .pill-teal { background: var(--teal-light); color: var(--teal); }
+ .pill-amber { background: var(--amber-light); color: var(--amber); }
+ .pill-red { background: var(--red-light); color: var(--red); }
+ .pill-gray { background: var(--gray-light); color: var(--gray); }
+
+ /* Diff highlight */
+ .diff-up { color: var(--teal); font-weight: 600; }
+ .diff-dn { color: var(--red); }
+
+ /* Insight box */
+ .insight { background: var(--surface2); border-left: 3px solid var(--border); border-radius: 0 var(--radius) var(--radius) 0; padding: 0.85rem 1rem; margin-bottom: 1rem; font-family: sans-serif; font-size: 0.875rem; color: var(--muted); }
+ .insight strong { color: var(--text); }
+
+ /* Data timeline dots */
+ .timeline-container { overflow-x: auto; }
+
+ /* Comparison toggle */
+ .toggle-group { display: flex; gap: 6px; margin-bottom: 1rem; }
+ .toggle-btn { padding: 5px 14px; font-size: 0.8rem; font-family: sans-serif; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+ .toggle-btn.active-v3 { background: var(--blue); color: #fff; border-color: var(--blue); }
+ .toggle-btn.active-v4 { background: var(--teal); color: #fff; border-color: var(--teal); }
+ .toggle-btn.active-both { background: var(--text); color: #fff; border-color: var(--text); }
+
+ @media (max-width: 700px) {
+ .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+ main { padding: 1rem; }
+ }
+ .h340{height:340px}
+ .h380{height:380px}
+ .h400{height:400px}
+ .h450{height:450px}
+ .h520{height:520px}
+</style>
+</head>
+<body>
+
+<header>
+ <h1>Rootzone Soft-Sensor</h1>
+ <p>XGBoost Walk-Forward - pH & EC Prediction - Greenhouse 2025</p>
+ <div class="header-meta">
+ <div class="header-stat"><div class="val">109</div><div class="lbl">Labeled samples</div></div>
+ <div class="header-stat"><div class="val">16,682</div><div class="lbl">10-min log rows</div></div>
+ <div class="header-stat"><div class="val">~4mo</div><div class="lbl">May-Sep 2025</div></div>
+ <div class="header-stat"><div class="val">1</div><div class="lbl">Model</div></div>
+ </div>
+</header>
+
+<nav>
+ <ul>
+ <li><a href="#" class="active" onclick="showSection('overview',this)">Overview</a></li>
+ <li><a href="#" onclick="showSection('data',this)">Data</a></li>
+ <li><a href="#" onclick="showSection('workflow',this)">Workflow</a></li>
+ <li><a href="#" onclick="showSection('features',this)">Features</a></li>
+ <li><a href="#" onclick="showSection('results',this)">Results</a></li>
+ <li><a href="#" onclick="showSection('scatter',this)">Scatter plots</a></li>
+ <li><a href="#" onclick="showSection('timeseries',this)">Time series</a></li>
+ <li><a href="#" onclick="showSection('gapanalysis',this)">Gap analysis</a></li>
+ <li><a href="#" onclick="showSection('holdout',this)">~24h Holdout</a></li>
+ </ul>
+</nav>
+
+<main>
+
+<!-- OVERVIEW -->
+<section id="overview" class="active">
+ <h2 class="section-title">Model overview</h2>
+ <p class="section-sub">XGBoost walk-forward model predicting rootzone pH and EC at the next measurement. Trained on 109 labeled intervals (May-Sep 2025). Features include climate, ET0, fertigation history, and irrigation history - all anchored to the prediction target time t1.</p>
+
+ <div class="grid4 mb">
+ <div class="metric"><div class="lbl">pH R2</div><div class="val teal" id="ov-ph-mae">-</div><div class="sub" id="ov-ph-gain">vs naive -</div></div>
+ <div class="metric"><div class="lbl">pH R2</div><div class="val teal" id="ov-ph-r2">-</div><div class="sub" id="ov-ph-rmse">RMSE -</div></div>
+ <div class="metric"><div class="lbl">EC MAE</div><div class="val blue" id="ov-ec-mae">-</div><div class="sub" id="ov-ec-gain">vs naive -</div></div>
+ <div class="metric"><div class="lbl">EC R2</div><div class="val blue" id="ov-ec-r2">-</div><div class="sub" id="ov-ec-rmse">RMSE -</div></div>
+ </div>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">pH - model vs baselines (MAE)</div>
+ <div class="chart-wrap h260"><canvas id="chart-compare-mae"></canvas></div>
+ </div>
+ <div class="card">
+ <div class="card-title">EC - model vs baselines (MAE)</div>
+ <div class="chart-wrap h260"><canvas id="chart-compare-r2"></canvas></div>
+ </div>
+ </div>
+
+ 
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">pH - Error distribution</div>
+ <div class="chart-wrap h200"><canvas id="chart-err-ph"></canvas></div>
+ </div>
+ <div class="card">
+ <div class="card-title">EC - Error distribution</div>
+ <div class="chart-wrap h200"><canvas id="chart-err-ec"></canvas></div>
+ </div>
+ </div>
+</section>
+
+<!-- DATA -->
+<section id="data">
+ <h2 class="section-title">Dataset</h2>
+ <p class="section-sub">~4 months of 10-minute greenhouse logs with sparse manual rootzone measurements. pH and EC samples taken at irregular intervals throughout the growing season.</p>
+
+ <div class="grid3 mb">
+ <div class="card">
+ <div class="card-title">Temporal coverage</div>
+ <table>
+ <tr><td class="faint">Start</td><td>May 29 2025</td></tr>
+ <tr><td class="faint">End</td><td>Sep 21 2025</td></tr>
+ <tr><td class="faint">Duration</td><td>~4 months</td></tr>
+ <tr><td class="faint">10-min rows</td><td>16,682</td></tr>
+ </table>
+ </div>
+ <div class="card">
+ <div class="card-title">Labeled measurements</div>
+ <table>
+ <tr><td class="faint">Total samples</td><td>109</td></tr>
+ <tr><td class="faint">pH warmup</td><td>55</td></tr>
+ <tr><td class="faint">pH eval</td><td>53</td></tr>
+ <tr><td class="faint">EC warmup</td><td>40</td></tr>
+ <tr><td class="faint">EC eval</td><td>69</td></tr>
+ <tr><td class="faint">Skip intervals</td><td>136</td></tr>
+ <tr><td class="faint">Holdout pairs</td><td>20</td></tr>
+ </table>
+ </div>
+ <div class="card">
+ <div class="card-title">Gap length stats</div>
+ <table>
+ <tr><td class="faint">Min gap</td><td>~20 min</td></tr>
+ <tr><td class="faint">Median gap</td><td>~6 h</td></tr>
+ <tr><td class="faint">Max gap</td><td>~408 h</td></tr>
+ <tr><td class="faint">Gaps >= 24h</td><td>20 (19%)</td></tr>
+ </table>
+ </div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">All intervals - gap length distribution (pH &amp; EC, n=108)</div>
+ <div class="chart-wrap h340"><canvas id="chart-raw-ph"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">EC - train vs test gap distribution (warmup=40 train, 69 test)</div>
+ <div class="chart-wrap h380"><canvas id="chart-raw-ec"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">pH - train vs test gap distribution (train=55, test=54)</div>
+ <div class="chart-wrap h380"><canvas id="chart-trainsize"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">pH - interval allocation by gap bin (55 consec train - 53 eval - 136 skip train)</div>
+ <div class="chart-wrap h320"><canvas id="chart-skip-augmentation"></canvas></div>
+ </div>
+</section>
+
+<!-- WORKFLOW -->
+<section id="workflow">
+ <h2 class="section-title">Model workflow</h2>
+ <p class="section-sub">Strict walk-forward validation - no data leakage, no look-ahead. The model is retrained after each new labeled measurement is revealed.</p>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">Training &amp; prediction pipeline</div>
+ <div class="step-list">
+ <div class="step"><div class="step-num">1</div><div class="step-body"><div class="title">Warmup phase</div>Train initial model on first 50 pH intervals (first 40 for EC). No predictions made during warmup.</div></div>
+ <div class="step"><div class="step-num">2</div><div class="step-body"><div class="title">Predict at t1</div>At each new measurement timestamp, extract features from [t0->t1) window + 24h pre-t1 history. Run model to predict pH/EC change.</div></div>
+ <div class="step"><div class="step-num">3</div><div class="step-body"><div class="title">Reveal &amp; retrain</div>True value is revealed. Add this interval to training set and retrain model. Training set grows by 1 after each sample.</div></div>
+ <div class="step"><div class="step-num">4</div><div class="step-body"><div class="title">Repeat</div>Steps 2-3 repeat for every subsequent labeled timestamp. Final training set = 109 samples (all data).</div></div>
+ </div>
+ </div>
+ <div class="card">
+ <div class="card-title">Training set size over time</div>
+ <div class="chart-wrap h300"><canvas id="chart-gaps"></canvas></div>
+ </div>
+ </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+ <h2 class="section-title">Feature importance</h2>
+ <p class="section-sub">Gain-based importance from the final trained XGBoost models.<br>
+ <span style="color:#d97706;font-weight:600">Orange = history features</span> - computed over the 24h <em>before t1</em>, anchored to the prediction target time. &nbsp;
+ <span style="color:#2563a8;font-weight:600">Blue = window features</span> - computed over the interval [t0->t1), i.e. the gap being predicted.</p>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title" id="feat-ph-title">pH - Feature Importance</div>
+ <div id="feat-ph-bars"></div>
+ </div>
+ <div class="card">
+ <div class="card-title" id="feat-ec-title">EC - Feature Importance</div>
+ <div id="feat-ec-bars"></div>
+ </div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">Feature descriptions</div>
+ <table>
+ <thead><tr><th>Feature</th><th>Type</th><th>How it is calculated</th><th>What it represents</th></tr></thead>
+ <tbody>
+ <tr><td style="font-family:monospace;font-size:.78rem">photo_temp_interaction</td><td><span style="color:#2563a8">win</span></td><td>VPD * soil_temp mean over [t0-&gt;t1)</td><td>Photosynthetic activity - when it is both warm and dry, plants transpire more and drive pH up</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">ph0</td><td><span style="color:#2563a8">win</span></td><td>pH value at t0 (last measurement)</td><td>Starting point - pH at the beginning of the prediction interval</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">ET0_per_hour</td><td><span style="color:#2563a8">win</span></td><td>sum ET0 over [t0-&gt;t1) / gap hours</td><td>Evapotranspiration rate - proxy for plant water demand and biological activity</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">transpiration_pull</td><td><span style="color:#2563a8">win</span></td><td>VPD * canopy cover mean over [t0-&gt;t1)</td><td>Water pull by the crop - how hard the canopy is transpiring</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">temp_x_canopy</td><td><span style="color:#2563a8">win</span></td><td>soil_temp * canopy cover mean over [t0-&gt;t1)</td><td>Root respiration proxy - warm roots under dense canopy produce more CO2, lowering pH</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">ec0</td><td><span style="color:#2563a8">win</span></td><td>EC value at t0 (last measurement)</td><td>Ionic strength of the rootzone - high EC buffers pH changes</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">gap_hours</td><td><span style="color:#2563a8">win</span></td><td>(t1 - t0) in hours</td><td>Length of the prediction window - longer gaps allow more biological/chemical change</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">log_ec_drive</td><td><span style="color:#2563a8">win</span></td><td>log(fert_conc / irr + 0.01) - log(ec0 + 0.01)</td><td>Mean-reversion signal - how far EC is from its expected equilibrium given inputs</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">temp_trend</td><td><span style="color:#2563a8">win</span></td><td>air_temp at end of window - air_temp at start</td><td>Temperature direction - rising temp concentrates rootzone, falling dilutes</td></tr>
+ <tr><td style="font-family:monospace;font-size:.78rem">soil_temp_mean</td><td><span style="color:#2563a8">win</span></td><td>Mean soil temperature over [t0-&gt;t1)</td><td>Baseline root zone temperature driving biological reaction rates</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_acid_decay</td><td><span style="color:#d97706">hist</span></td><td>sum dose_i * e^(-0.34 * hrs_before_t1) over [t1-24h, t1)</td><td>Recency-weighted acid/fert dose - recent fert events have larger effect on pH than older ones</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_salt_buildup</td><td><span style="color:#d97706">hist</span></td><td>sum salt_ferts - 0.1 * sum irrigation over [t1-24h, t1)</td><td>Net salt accumulation - fertigation adds salt, irrigation dilutes it</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_hrs_since_fert</td><td><span style="color:#d97706">hist</span></td><td>t1 - timestamp of last fertigation before t1 (hours)</td><td>Time since last fert - affects how much of the fert effect has already propagated</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_hrs_since_irr</td><td><span style="color:#d97706">hist</span></td><td>t1 - timestamp of last irrigation before t1 (hours)</td><td>Time since last dilution event - long gaps mean salt has had time to concentrate</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_irr_recent</td><td><span style="color:#d97706">hist</span></td><td>sum irrigation volume over [t1-6h, t1)</td><td>Very recent irrigation - immediate dilution effect on rootzone EC and pH</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_irr_mid</td><td><span style="color:#d97706">hist</span></td><td>sum irrigation volume over [t1-12h, t1-6h)</td><td>Mid-range irrigation - captures the nitrification peak window (6-12h after irrigation)</td></tr>
+ <tr style="background:rgba(217,119,6,.04)"><td style="font-family:monospace;font-size:.78rem">hist_irr_prior</td><td><span style="color:#d97706">hist</span></td><td>sum irrigation volume over [t1-24h, t1-12h)</td><td>Prior-day irrigation - background rootzone dilution state</td></tr>
+ </tbody>
+ </table>
+ </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results">
+ <h2 class="section-title">Results summary</h2>
+ <p class="section-sub">Walk-forward evaluation across 54 labeled samples. Gap bins: 0-2, 2-8h, 8-24h, 24h+. The 0-2 bin combines all intervals up to 2 hours regardless of fertigation. Naive baseline = carry-forward last known value.</p>
+
+ <div class="grid4 mb">
+ <div class="metric"><div class="lbl">pH MAE</div><div class="val teal" id="res-ph-mae">-</div><div class="sub" id="res-ph-r2">-</div></div>
+ <div class="metric"><div class="lbl">pH vs Naive</div><div class="val blue" id="res-ph-gain">-</div><div class="sub">carry-forward</div></div>
+ <div class="metric"><div class="lbl">EC MAE</div><div class="val teal" id="res-ec-mae">-</div><div class="sub" id="res-ec-r2">-</div></div>
+ <div class="metric"><div class="lbl">EC vs Naive</div><div class="val blue" id="res-ec-gain">-</div><div class="sub">carry-forward</div></div>
+ </div>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">pH - MAE by gap bin</div>
+ <div class="chart-wrap h260"><canvas id="chart-ph-gaps"></canvas></div>
+ </div>
+ <div class="card">
+ <div class="card-title">EC - MAE by gap bin</div>
+ <div class="chart-wrap h260"><canvas id="chart-ec-gaps"></canvas></div>
+ </div>
+ </div>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">pH - model vs baselines MAE</div>
+ <div class="chart-wrap h240"><canvas id="chart-ph-naive"></canvas></div>
+ </div>
+ <div class="card">
+ <div class="card-title">EC - model vs baselines MAE</div>
+ <div class="chart-wrap h240"><canvas id="chart-ec-naive"></canvas></div>
+ </div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">Full gap analysis table</div>
+ <table>
+ <thead><tr><th>Gap Bin</th><th>n</th><th>pH Model MAE</th><th>pH Naive</th><th>pH improve</th><th>EC Model MAE</th><th>EC Naive</th><th>EC improve</th></tr></thead>
+ <tbody id="res-table-body"></tbody>
+ </table>
+ </div>
+</section>
+
+<!-- SCATTER -->
+<section id="scatter">
+ <h2 class="section-title">Predicted vs actual</h2>
+ <p class="section-sub">Each point is one interval endpoint. Perfect predictions lie on the diagonal.</p>
+
+ <div class="mb" style="display:flex;gap:1.25rem;flex-wrap:wrap;align-items:center;padding:.6rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:.82rem">
+ <span style="font-family:monospace;font-size:.72rem;color:var(--muted);margin-right:.5rem">GAP BIN</span>
+ <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#2563a8;margin-right:.4rem;vertical-align:middle"></span>0-2</span>
+ <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#92580a;margin-right:.4rem;vertical-align:middle"></span>2-8h</span>
+ <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#0d7a5f;margin-right:.4rem;vertical-align:middle"></span>8-24h</span>
+ <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#6b21a8;margin-right:.4rem;vertical-align:middle"></span>24h+</span>
+ <span><span style="display:inline-block;width:28px;height:2px;background:#111;border-top:2px dashed #111;margin-right:.4rem;vertical-align:middle"></span>Perfect prediction</span>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title" id="scatter-ph-title">pH - True vs Predicted</div>
+ <div class="chart-wrap h480"><canvas id="chart-scatter-ph"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title" id="scatter-ec-title">EC - True vs Predicted</div>
+ <div class="chart-wrap h480"><canvas id="chart-scatter-ec"></canvas></div>
+ </div>
+</section>
+
+<!-- TIME SERIES -->
+<section id="timeseries">
+ <h2 class="section-title">Predictions over time</h2>
+ <p class="section-sub">Labeled measurement points only. Both actual and predicted series use dotted direction lines, and each true/predicted pair is linked with a red connector to show the size of the error directly.</p>
+
+ <div class="card mb">
+ <div class="card-title">pH - actual vs predicted (labeled points only)</div>
+ <div class="chart-wrap h480"><canvas id="chart-avp-ph2"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">EC - actual vs predicted (labeled points only)</div>
+ <div class="chart-wrap h480"><canvas id="chart-avp-ec2"></canvas></div>
+ </div>
+</section>
+
+<!-- GAP ANALYSIS -->
+<section id="gapanalysis">
+ <h2 class="section-title">Gap length analysis</h2>
+ <p class="section-sub">Model performance broken down by prediction interval length. Naive = carry-forward last known value.</p>
+
+ <div class="grid2 mb">
+ <div class="card">
+ <div class="card-title">pH - gap analysis</div>
+ <table id="gap-ph-table">
+ <thead><tr><th>Gap</th><th>n</th><th>Model MAE</th><th>Naive MAE</th><th>Improvement</th></tr></thead>
+ <tbody></tbody>
+ </table>
+ </div>
+ <div class="card">
+ <div class="card-title">EC - gap analysis</div>
+ <table id="gap-ec-table">
+ <thead><tr><th>Gap</th><th>n</th><th>Model MAE</th><th>Naive MAE</th><th>Improvement</th></tr></thead>
+ <tbody></tbody>
+ </table>
+ </div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">pH - average error by gap length (1-hour buckets, n = samples in each bucket)</div>
+ <div class="chart-wrap h360"><canvas id="chart-err-by-hour-ph"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">EC - average error by gap length (1-hour buckets, n = samples in each bucket)</div>
+ <div class="chart-wrap h360"><canvas id="chart-err-by-hour-ec"></canvas></div>
+ </div>
+</section>
+
+
+<!-- HOLDOUT -->
+<section id="holdout">
+ <h2 class="section-title">~24h Holdout evaluation</h2>
+ <p class="section-sub">20-27h gaps. None of these gaps were used for training. The plots below focus on pH holdout performance against the carry-forward naive baseline.</p>
+
+ <div class="grid4 mb">
+ <div class="metric"><div class="lbl">pH MAE</div>
+ <div class="val teal">0.3093</div><div class="sub">model</div></div>
+ <div class="metric"><div class="lbl">pH Naive</div>
+ <div class="val" style="color:var(--gray)">1.0570</div><div class="sub">carry-forward</div></div>
+ <div class="metric"><div class="lbl">pH Gain</div>
+ <div class="val blue">0.7477</div><div class="sub">absolute improvement</div></div>
+ <div class="metric"><div class="lbl">pH R2</div>
+ <div class="val teal">0.8665</div><div class="sub">holdout</div></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">pH - predicted vs actual</div>
+ <div class="chart-wrap h520"><canvas id="chart-holdout-bars"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">pH - absolute error by holdout pair (model vs naive)</div>
+ <div class="chart-wrap h520"><canvas id="chart-holdout-scatter"></canvas></div>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">Gap distribution of holdout</div>
+ <table><thead><tr><th>Gap bucket</th><th>Count</th></tr></thead>
+ <tbody id="holdout-gap-body"></tbody>
+ </table>
+ </div>
+
+ <div class="card mb">
+ <div class="card-title">Per-interval detail - 20 unseen ~24h gaps</div>
+ <table><thead><tr>
+ <th>#</th><th>t0</th><th>t1</th><th>Gap</th><th>pH true</th><th>pH pred</th><th>Naive pred</th><th>Model err</th><th>Naive err</th>
+ </tr></thead><tbody id="holdout-detail-body"></tbody></table>
+ </div>
+</section>
+
+</main>
+
+<script>
+const RAW ={"model_ph":{"mae":0.3214,"r2":0.9306,"naive_mae":0.8267,"rmse":0.4222,"gain":0.5053,"n_test":54,"warmup":55,"bins":{"0\u20132h no fert":{"n":19,"mae":0.258,"naive":0.2663},"0\u20132h + fert":{"n":3,"mae":0.7368,"naive":0.63},"2\u20138h":{"n":20,"mae":0.3209,"naive":0.9745},"8\u201324h":{"n":9,"mae":0.3806,"naive":1.6611},"24h+":{"n":3,"mae":0.1325,"naive":1.0833}},"imp":{"photo_temp_interaction":0.184159,"ph0":0.103174,"t1_morning":0.087994,"gap_hours":0.072136,"overnight_h":0.070796,"t0_morning":0.055285,"hist_salt_buildup":0.050407,"transpiration_pull":0.047108,"ec0":0.039554,"temp_x_canopy":0.038851,"ET0_per_hour":0.038087,"hist_acid_decay":0.037255,"hist_irr_mid":0.030197,"soil_delta":0.028591,"hist_irr_recent":0.025493,"hist_hrs_since_fert":0.025319,"rad_morning":0.024225,"hist_irr_prior":0.01774,"hist_hrs_since_irr":0.016518,"rad_t1_log":0.007111},"eval":[{"t1":"2025-09-02T15:00:00","true":10.34,"pred":10.34,"naive":10.34,"gap":0.0,"fert":0},{"t1":"2025-09-03T09:00:00","true":8.87,"pred":8.7265,"naive":10.34,"gap":18.0,"fert":1},{"t1":"2025-09-03T15:20:00","true":10.32,"pred":10.0373,"naive":8.87,"gap":6.33,"fert":0},{"t1":"2025-09-07T08:50:00","true":8.25,"pred":8.4873,"naive":10.32,"gap":89.5,"fert":1},{"t1":"2025-09-07T15:30:00","true":10.01,"pred":9.6834,"naive":8.25,"gap":6.67,"fert":0},{"t1":"2025-09-08T09:30:00","true":8.8,"pred":8.4701,"naive":10.01,"gap":18.0,"fert":1},{"t1":"2025-09-08T13:50:00","true":9.76,"pred":9.5411,"naive":8.8,"gap":4.33,"fert":0},{"t1":"2025-09-09T08:30:00","true":7.9,"pred":8.4705,"naive":9.76,"gap":18.67,"fert":1},{"t1":"2025-09-09T14:10:00","true":9.9,"pred":9.6853,"naive":7.9,"gap":5.67,"fert":0},{"t1":"2025-09-09T15:40:00","true":9.88,"pred":10.444,"naive":9.9,"gap":1.5,"fert":0},{"t1":"2025-09-09T18:40:00","true":9.33,"pred":9.6033,"naive":9.88,"gap":3.0,"fert":0},{"t1":"2025-09-10T07:50:00","true":7.87,"pred":8.463,"naive":9.33,"gap":13.17,"fert":0},{"t1":"2025-09-10T11:30:00","true":9.5,"pred":8.8604,"naive":7.87,"gap":3.67,"fert":1},{"t1":"2025-09-10T13:50:00","true":10.16,"pred":9.8499,"naive":9.5,"gap":2.33,"fert":0},{"t1":"2025-09-10T15:50:00","true":10.22,"pred":10.3601,"naive":10.16,"gap":2.0,"fert":0},{"t1":"2025-09-11T07:50:00","true":7.81,"pred":8.5328,"naive":10.22,"gap":16.0,"fert":0},{"t1":"2025-09-11T11:20:00","true":9.24,"pred":9.2455,"naive":7.81,"gap":3.5,"fert":1},{"t1":"2025-09-11T13:30:00","true":9.39,"pred":9.8214,"naive":9.24,"gap":2.17,"fert":0},{"t1":"2025-09-11T14:10:00","true":10.06,"pred":9.754,"naive":9.39,"gap":0.67,"fert":0},{"t1":"2025-09-11T17:20:00","true":9.56,"pred":9.4028,"naive":10.06,"gap":3.17,"fert":0},{"t1":"2025-09-11T18:10:00","true":9.05,"pred":9.364,"naive":9.56,"gap":0.83,"fert":0},{"t1":"2025-09-14T08:30:00","true":8.48,"pred":8.447,"naive":9.05,"gap":62.33,"fert":1},{"t1":"2025-09-14T11:30:00","true":9.26,"pred":9.2848,"naive":8.48,"gap":3.0,"fert":0},{"t1":"2025-09-14T12:20:00","true":9.65,"pred":9.6595,"naive":9.26,"gap":0.83,"fert":0},{"t1":"2025-09-14T15:10:00","true":9.95,"pred":9.9273,"naive":9.65,"gap":2.83,"fert":0},{"t1":"2025-09-14T18:00:00","true":9.36,"pred":9.2792,"naive":9.95,"gap":2.83,"fert":0},{"t1":"2025-09-15T08:10:00","true":7.92,"pred":8.1571,"naive":9.36,"gap":14.17,"fert":0},{"t1":"2025-09-15T12:00:00","true":9.45,"pred":9.6133,"naive":7.92,"gap":3.83,"fert":1},{"t1":"2025-09-15T14:10:00","true":10.13,"pred":10.0079,"naive":9.45,"gap":2.17,"fert":0},{"t1":"2025-09-15T15:30:00","true":10.2,"pred":10.3271,"naive":10.13,"gap":1.33,"fert":0},{"t1":"2025-09-15T17:40:00","true":9.09,"pred":9.5584,"naive":10.2,"gap":2.17,"fert":0},{"t1":"2025-09-16T06:40:00","true":7.66,"pred":8.1688,"naive":9.09,"gap":13.0,"fert":0},{"t1":"2025-09-16T08:50:00","true":8.14,"pred":8.5107,"naive":7.66,"gap":2.17,"fert":1},{"t1":"2025-09-16T10:00:00","true":7.94,"pred":8.5553,"naive":8.14,"gap":1.17,"fert":0},{"t1":"2025-09-16T12:10:00","true":9.5,"pred":8.6863,"naive":7.94,"gap":2.17,"fert":0},{"t1":"2025-09-16T13:50:00","true":9.88,"pred":9.9186,"naive":9.5,"gap":1.67,"fert":0},{"t1":"2025-09-17T08:50:00","true":8.3,"pred":8.072,"naive":9.88,"gap":19.0,"fert":1},{"t1":"2025-09-17T11:50:00","true":8.88,"pred":9.1087,"naive":8.3,"gap":3.0,"fert":0},{"t1":"2025-09-17T13:30:00","true":9.78,"pred":9.4363,"naive":8.88,"gap":1.67,"fert":0},{"t1":"2025-09-17T15:20:00","true":9.85,"pred":9.8323,"naive":9.78,"gap":1.83,"fert":0},{"t1":"2025-09-18T07:10:00","true":7.76,"pred":7.8516,"naive":9.85,"gap":15.83,"fert":0},{"t1":"2025-09-18T09:40:00","true":6.97,"pred":8.233,"naive":7.76,"gap":2.5,"fert":1},{"t1":"2025-09-18T10:30:00","true":6.71,"pred":7.326,"naive":6.97,"gap":0.83,"fert":1},{"t1":"2025-09-18T12:00:00","true":7.27,"pred":6.9806,"naive":6.71,"gap":1.5,"fert":0},{"t1":"2025-09-18T13:10:00","true":7.08,"pred":7.3636,"naive":7.27,"gap":1.17,"fert":1},{"t1":"2025-09-18T14:10:00","true":6.65,"pred":7.128,"naive":7.08,"gap":1.0,"fert":0},{"t1":"2025-09-18T15:10:00","true":6.8,"pred":6.4665,"naive":6.65,"gap":1.0,"fert":0},{"t1":"2025-09-21T06:30:00","true":6.19,"pred":6.3172,"naive":6.8,"gap":63.33,"fert":0},{"t1":"2025-09-21T07:20:00","true":4.75,"pred":6.0609,"naive":6.19,"gap":0.83,"fert":1},{"t1":"2025-09-21T08:40:00","true":4.75,"pred":4.4297,"naive":4.75,"gap":1.33,"fert":0},{"t1":"2025-09-21T10:30:00","true":5.17,"pred":5.0013,"naive":4.75,"gap":1.83,"fert":0},{"t1":"2025-09-21T11:40:00","true":5.25,"pred":5.4685,"naive":5.17,"gap":1.17,"fert":0},{"t1":"2025-09-21T13:40:00","true":5.33,"pred":5.7867,"naive":5.25,"gap":2.0,"fert":0},{"t1":"2025-09-21T15:30:00","true":5.4,"pred":5.5613,"naive":5.33,"gap":1.83,"fert":0}]},"model_ec":{"mae":0.179,"r2":0.8211,"naive_mae":0.1814,"rmse":0.4928,"gain":0.0023,"n_test":69,"warmup":40,"bins":{"0\u20132h no fert":{"n":21,"mae":0.1443,"naive":0.1516},"0\u20132h + fert":{"n":3,"mae":1.4727,"naive":1.4067},"2\u20138h":{"n":26,"mae":0.0986,"naive":0.102},"8\u201324h":{"n":14,"mae":0.1114,"naive":0.1124},"24h+":{"n":5,"mae":0.1561,"naive":0.1768}},"imp":{"hist_acid_decay":0.137466,"hist_hrs_since_fert":0.126911,"log_ec_drive":0.126651,"ec0":0.090559,"hist_hrs_since_irr":0.09024,"hist_irr_recent":0.088232,"hist_salt_buildup":0.087732,"temp_trend":0.085647,"hist_irr_mid":0.059744,"hist_irr_prior":0.056645,"soil_temp_mean":0.050174},"eval":[{"t1":"2025-08-21T13:00:00","true":0.738,"pred":0.738,"naive":0.738,"gap":0.0,"fert":0},{"t1":"2025-08-21T15:00:00","true":0.8278,"pred":0.7484,"naive":0.738,"gap":2.0,"fert":0},{"t1":"2025-08-25T09:00:00","true":0.327,"pred":0.8453,"naive":0.8278,"gap":90.0,"fert":0},{"t1":"2025-08-25T16:00:00","true":0.327,"pred":0.3334,"naive":0.327,"gap":7.0,"fert":1},{"t1":"2025-08-26T12:00:00","true":0.266,"pred":0.3328,"naive":0.327,"gap":20.0,"fert":1},{"t1":"2025-08-26T16:30:00","true":0.314,"pred":0.2665,"naive":0.266,"gap":4.5,"fert":0},{"t1":"2025-08-27T11:40:00","true":0.181,"pred":0.3183,"naive":0.314,"gap":19.17,"fert":1},{"t1":"2025-08-27T14:10:00","true":0.294,"pred":0.1783,"naive":0.181,"gap":2.5,"fert":0},{"t1":"2025-08-28T13:30:00","true":0.358,"pred":0.2977,"naive":0.294,"gap":23.33,"fert":1},{"t1":"2025-08-28T15:00:00","true":0.174,"pred":0.3659,"naive":0.358,"gap":1.5,"fert":0},{"t1":"2025-08-31T08:20:00","true":0.18,"pred":0.1749,"naive":0.174,"gap":65.33,"fert":0},{"t1":"2025-08-31T12:30:00","true":0.167,"pred":0.1813,"naive":0.18,"gap":4.17,"fert":1},{"t1":"2025-09-01T08:30:00","true":0.292,"pred":0.1672,"naive":0.167,"gap":20.0,"fert":1},{"t1":"2025-09-01T12:30:00","true":0.306,"pred":0.2975,"naive":0.292,"gap":4.0,"fert":0},{"t1":"2025-09-02T08:30:00","true":0.168,"pred":0.3121,"naive":0.306,"gap":20.0,"fert":1},{"t1":"2025-09-02T15:00:00","true":0.299,"pred":0.1687,"naive":0.168,"gap":6.5,"fert":0},{"t1":"2025-09-03T09:00:00","true":0.301,"pred":0.3044,"naive":0.299,"gap":18.0,"fert":1},{"t1":"2025-09-03T15:20:00","true":0.308,"pred":0.3062,"naive":0.301,"gap":6.33,"fert":0},{"t1":"2025-09-07T08:50:00","true":0.334,"pred":0.3133,"naive":0.308,"gap":89.5,"fert":1},{"t1":"2025-09-07T15:30:00","true":0.1548,"pred":0.3404,"naive":0.334,"gap":6.67,"fert":0},{"t1":"2025-09-08T09:30:00","true":0.326,"pred":0.1567,"naive":0.1548,"gap":18.0,"fert":1},{"t1":"2025-09-08T13:50:00","true":0.156,"pred":0.3325,"naive":0.326,"gap":4.33,"fert":0},{"t1":"2025-09-09T08:30:00","true":0.348,"pred":0.1582,"naive":0.156,"gap":18.67,"fert":1},{"t1":"2025-09-09T14:10:00","true":0.3,"pred":0.3549,"naive":0.348,"gap":5.67,"fert":0},{"t1":"2025-09-09T15:40:00","true":0.347,"pred":0.3045,"naive":0.3,"gap":1.5,"fert":0},{"t1":"2025-09-09T18:40:00","true":0.161,"pred":0.3534,"naive":0.347,"gap":3.0,"fert":0},{"t1":"2025-09-10T07:50:00","true":0.342,"pred":0.1638,"naive":0.161,"gap":13.17,"fert":0},{"t1":"2025-09-10T11:30:00","true":0.292,"pred":0.3485,"naive":0.342,"gap":3.67,"fert":1},{"t1":"2025-09-10T13:50:00","true":0.303,"pred":0.2991,"naive":0.292,"gap":2.33,"fert":0},{"t1":"2025-09-10T15:50:00","true":0.306,"pred":0.3149,"naive":0.303,"gap":2.0,"fert":0},{"t1":"2025-09-11T07:50:00","true":0.336,"pred":0.3039,"naive":0.306,"gap":16.0,"fert":0},{"t1":"2025-09-11T11:20:00","true":0.17,"pred":0.3203,"naive":0.336,"gap":3.5,"fert":1},{"t1":"2025-09-11T13:30:00","true":0.348,"pred":0.1916,"naive":0.17,"gap":2.17,"fert":0},{"t1":"2025-09-11T14:10:00","true":0.325,"pred":0.3541,"naive":0.348,"gap":0.67,"fert":0},{"t1":"2025-09-11T17:20:00","true":0.288,"pred":0.3277,"naive":0.325,"gap":3.17,"fert":0},{"t1":"2025-09-11T18:10:00","true":0.349,"pred":0.3206,"naive":0.288,"gap":0.83,"fert":0},{"t1":"2025-09-14T08:30:00","true":0.177,"pred":0.3178,"naive":0.349,"gap":62.33,"fert":1},{"t1":"2025-09-14T11:30:00","true":0.286,"pred":0.2101,"naive":0.177,"gap":3.0,"fert":0},{"t1":"2025-09-14T12:20:00","true":0.316,"pred":0.3085,"naive":0.286,"gap":0.83,"fert":0},{"t1":"2025-09-14T15:10:00","true":0.156,"pred":0.3103,"naive":0.316,"gap":2.83,"fert":0},{"t1":"2025-09-14T18:00:00","true":0.307,"pred":0.2115,"naive":0.156,"gap":2.83,"fert":0},{"t1":"2025-09-15T08:10:00","true":0.198,"pred":0.2707,"naive":0.307,"gap":14.17,"fert":0},{"t1":"2025-09-15T12:00:00","true":0.321,"pred":0.2605,"naive":0.198,"gap":3.83,"fert":1},{"t1":"2025-09-15T14:10:00","true":0.332,"pred":0.2933,"naive":0.321,"gap":2.17,"fert":0},{"t1":"2025-09-15T15:30:00","true":0.334,"pred":0.3048,"naive":0.332,"gap":1.33,"fert":0},{"t1":"2025-09-15T17:40:00","true":0.383,"pred":0.3081,"naive":0.334,"gap":2.17,"fert":0},{"t1":"2025-09-16T06:40:00","true":0.358,"pred":0.3026,"naive":0.383,"gap":13.0,"fert":0},{"t1":"2025-09-16T08:50:00","true":0.183,"pred":0.3338,"naive":0.358,"gap":2.17,"fert":1},{"t1":"2025-09-16T10:00:00","true":0.414,"pred":0.2542,"naive":0.183,"gap":1.17,"fert":0},{"t1":"2025-09-16T12:10:00","true":0.302,"pred":0.4023,"naive":0.414,"gap":2.17,"fert":0},{"t1":"2025-09-16T13:50:00","true":0.309,"pred":0.3255,"naive":0.302,"gap":1.67,"fert":0},{"t1":"2025-09-17T08:50:00","true":0.215,"pred":0.2892,"naive":0.309,"gap":19.0,"fert":1},{"t1":"2025-09-17T11:50:00","true":0.128,"pred":0.2994,"naive":0.215,"gap":3.0,"fert":0},{"t1":"2025-09-17T13:30:00","true":0.333,"pred":0.2183,"naive":0.128,"gap":1.67,"fert":0},{"t1":"2025-09-17T15:20:00","true":0.221,"pred":0.3087,"naive":0.333,"gap":1.83,"fert":0},{"t1":"2025-09-18T07:10:00","true":0.47,"pred":0.2184,"naive":0.221,"gap":15.83,"fert":0},{"t1":"2025-09-18T09:40:00","true":0.795,"pred":0.4951,"naive":0.47,"gap":2.5,"fert":1},{"t1":"2025-09-18T10:30:00","true":0.968,"pred":0.7003,"naive":0.795,"gap":0.83,"fert":1},{"t1":"2025-09-18T12:00:00","true":0.98,"pred":1.0239,"naive":0.968,"gap":1.5,"fert":0},{"t1":"2025-09-18T13:10:00","true":0.662,"pred":1.0338,"naive":0.98,"gap":1.17,"fert":1},{"t1":"2025-09-18T14:10:00","true":0.709,"pred":0.6433,"naive":0.662,"gap":1.0,"fert":0},{"t1":"2025-09-18T15:10:00","true":0.68,"pred":0.6905,"naive":0.709,"gap":1.0,"fert":0},{"t1":"2025-09-21T06:30:00","true":0.501,"pred":0.5965,"naive":0.68,"gap":63.33,"fert":0},{"t1":"2025-09-21T07:20:00","true":4.23,"pred":0.4515,"naive":0.501,"gap":0.83,"fert":1},{"t1":"2025-09-21T08:40:00","true":4.97,"pred":4.1945,"naive":4.23,"gap":1.33,"fert":0},{"t1":"2025-09-21T10:30:00","true":4.52,"pred":4.9485,"naive":4.97,"gap":1.83,"fert":0},{"t1":"2025-09-21T11:40:00","true":4.4,"pred":4.5058,"naive":4.52,"gap":1.17,"fert":0},{"t1":"2025-09-21T13:40:00","true":4.53,"pred":4.3755,"naive":4.4,"gap":2.0,"fert":0},{"t1":"2025-09-21T15:30:00","true":3.87,"pred":4.5207,"naive":4.53,"gap":1.83,"fert":0}]},"baselines":{"ph":{"naive_mae":0.8267,"mean_trend_mae":0.8367,"global_mean_mae":1.328,"global_mean":8.51,"mean_delta":-0.04},"ec":{"naive_mae":0.1814,"mean_trend_mae":0.1894,"global_mean_mae":0.67,"global_mean":0.7,"mean_delta":0.045}},"gap_data":{"all_ph":{"0-2h":24,"2-8h":39,"8-24h":25,"24h+":20},"train_ph":{"0-2h":3,"2-8h":16,"8-24h":14,"24h+":17},"test_ph":{"0-2h":22,"2-8h":23,"8-24h":11,"24h+":3},"train_ec":{"0-2h":1,"2-8h":13,"8-24h":11,"24h+":15},"test_ec":{"0-2h":24,"2-8h":26,"8-24h":14,"24h+":5}},"pred_ph":[{"t":"2025-09-02T15:00:00","v":10.34},{"t":"2025-09-03T09:00:00","v":8.7265},{"t":"2025-09-03T15:20:00","v":10.0373},{"t":"2025-09-07T08:50:00","v":8.4873},{"t":"2025-09-07T15:30:00","v":9.6834},{"t":"2025-09-08T09:30:00","v":8.4701},{"t":"2025-09-08T13:50:00","v":9.5411},{"t":"2025-09-09T08:30:00","v":8.4705},{"t":"2025-09-09T14:10:00","v":9.6853},{"t":"2025-09-09T15:40:00","v":10.444},{"t":"2025-09-09T18:40:00","v":9.6033},{"t":"2025-09-10T07:50:00","v":8.463},{"t":"2025-09-10T11:30:00","v":8.8604},{"t":"2025-09-10T13:50:00","v":9.8499},{"t":"2025-09-10T15:50:00","v":10.3601},{"t":"2025-09-11T07:50:00","v":8.5328},{"t":"2025-09-11T11:20:00","v":9.2455},{"t":"2025-09-11T13:30:00","v":9.8214},{"t":"2025-09-11T14:10:00","v":9.754},{"t":"2025-09-11T17:20:00","v":9.4028},{"t":"2025-09-11T18:10:00","v":9.364},{"t":"2025-09-14T08:30:00","v":8.447},{"t":"2025-09-14T11:30:00","v":9.2848},{"t":"2025-09-14T12:20:00","v":9.6595},{"t":"2025-09-14T15:10:00","v":9.9273},{"t":"2025-09-14T18:00:00","v":9.2792},{"t":"2025-09-15T08:10:00","v":8.1571},{"t":"2025-09-15T12:00:00","v":9.6133},{"t":"2025-09-15T14:10:00","v":10.0079},{"t":"2025-09-15T15:30:00","v":10.3271},{"t":"2025-09-15T17:40:00","v":9.5584},{"t":"2025-09-16T06:40:00","v":8.1688},{"t":"2025-09-16T08:50:00","v":8.5107},{"t":"2025-09-16T10:00:00","v":8.5553},{"t":"2025-09-16T12:10:00","v":8.6863},{"t":"2025-09-16T13:50:00","v":9.9186},{"t":"2025-09-17T08:50:00","v":8.072},{"t":"2025-09-17T11:50:00","v":9.1087},{"t":"2025-09-17T13:30:00","v":9.4363},{"t":"2025-09-17T15:20:00","v":9.8323},{"t":"2025-09-18T07:10:00","v":7.8516},{"t":"2025-09-18T09:40:00","v":8.233},{"t":"2025-09-18T10:30:00","v":7.326},{"t":"2025-09-18T12:00:00","v":6.9806},{"t":"2025-09-18T13:10:00","v":7.3636},{"t":"2025-09-18T14:10:00","v":7.128},{"t":"2025-09-18T15:10:00","v":6.4665},{"t":"2025-09-21T06:30:00","v":6.3172},{"t":"2025-09-21T07:20:00","v":6.0609},{"t":"2025-09-21T08:40:00","v":4.4297},{"t":"2025-09-21T10:30:00","v":5.0013},{"t":"2025-09-21T11:40:00","v":5.4685},{"t":"2025-09-21T13:40:00","v":5.7867},{"t":"2025-09-21T15:30:00","v":5.5613}],"pred_ec":[{"t":"2025-08-21T13:00:00","v":0.738},{"t":"2025-08-21T15:00:00","v":0.7484},{"t":"2025-08-25T09:00:00","v":0.8453},{"t":"2025-08-25T16:00:00","v":0.3334},{"t":"2025-08-26T12:00:00","v":0.3328},{"t":"2025-08-26T16:30:00","v":0.2665},{"t":"2025-08-27T11:40:00","v":0.3183},{"t":"2025-08-27T14:10:00","v":0.1783},{"t":"2025-08-28T13:30:00","v":0.2977},{"t":"2025-08-28T15:00:00","v":0.3659},{"t":"2025-08-31T08:20:00","v":0.1749},{"t":"2025-08-31T12:30:00","v":0.1813},{"t":"2025-09-01T08:30:00","v":0.1672},{"t":"2025-09-01T12:30:00","v":0.2975},{"t":"2025-09-02T08:30:00","v":0.3121},{"t":"2025-09-02T15:00:00","v":0.1687},{"t":"2025-09-03T09:00:00","v":0.3044},{"t":"2025-09-03T15:20:00","v":0.3062},{"t":"2025-09-07T08:50:00","v":0.3133},{"t":"2025-09-07T15:30:00","v":0.3404},{"t":"2025-09-08T09:30:00","v":0.1567},{"t":"2025-09-08T13:50:00","v":0.3325},{"t":"2025-09-09T08:30:00","v":0.1582},{"t":"2025-09-09T14:10:00","v":0.3549},{"t":"2025-09-09T15:40:00","v":0.3045},{"t":"2025-09-09T18:40:00","v":0.3534},{"t":"2025-09-10T07:50:00","v":0.1638},{"t":"2025-09-10T11:30:00","v":0.3485},{"t":"2025-09-10T13:50:00","v":0.2991},{"t":"2025-09-10T15:50:00","v":0.3149},{"t":"2025-09-11T07:50:00","v":0.3039},{"t":"2025-09-11T11:20:00","v":0.3203},{"t":"2025-09-11T13:30:00","v":0.1916},{"t":"2025-09-11T14:10:00","v":0.3541},{"t":"2025-09-11T17:20:00","v":0.3277},{"t":"2025-09-11T18:10:00","v":0.3206},{"t":"2025-09-14T08:30:00","v":0.3178},{"t":"2025-09-14T11:30:00","v":0.2101},{"t":"2025-09-14T12:20:00","v":0.3085},{"t":"2025-09-14T15:10:00","v":0.3103},{"t":"2025-09-14T18:00:00","v":0.2115},{"t":"2025-09-15T08:10:00","v":0.2707},{"t":"2025-09-15T12:00:00","v":0.2605},{"t":"2025-09-15T14:10:00","v":0.2933},{"t":"2025-09-15T15:30:00","v":0.3048},{"t":"2025-09-15T17:40:00","v":0.3081},{"t":"2025-09-16T06:40:00","v":0.3026},{"t":"2025-09-16T08:50:00","v":0.3338},{"t":"2025-09-16T10:00:00","v":0.2542},{"t":"2025-09-16T12:10:00","v":0.4023},{"t":"2025-09-16T13:50:00","v":0.3255},{"t":"2025-09-17T08:50:00","v":0.2892},{"t":"2025-09-17T11:50:00","v":0.2994},{"t":"2025-09-17T13:30:00","v":0.2183},{"t":"2025-09-17T15:20:00","v":0.3087},{"t":"2025-09-18T07:10:00","v":0.2184},{"t":"2025-09-18T09:40:00","v":0.4951},{"t":"2025-09-18T10:30:00","v":0.7003},{"t":"2025-09-18T12:00:00","v":1.0239},{"t":"2025-09-18T13:10:00","v":1.0338},{"t":"2025-09-18T14:10:00","v":0.6433},{"t":"2025-09-18T15:10:00","v":0.6905},{"t":"2025-09-21T06:30:00","v":0.5965},{"t":"2025-09-21T07:20:00","v":0.4515},{"t":"2025-09-21T08:40:00","v":4.1945},{"t":"2025-09-21T10:30:00","v":4.9485},{"t":"2025-09-21T11:40:00","v":4.5058},{"t":"2025-09-21T13:40:00","v":4.3755},{"t":"2025-09-21T15:30:00","v":4.5207}],"actual_ph":[{"t":"2025-09-02T15:00:00","v":10.34},{"t":"2025-09-03T09:00:00","v":8.87},{"t":"2025-09-03T15:20:00","v":10.32},{"t":"2025-09-07T08:50:00","v":8.25},{"t":"2025-09-07T15:30:00","v":10.01},{"t":"2025-09-08T09:30:00","v":8.8},{"t":"2025-09-08T13:50:00","v":9.76},{"t":"2025-09-09T08:30:00","v":7.9},{"t":"2025-09-09T14:10:00","v":9.9},{"t":"2025-09-09T15:40:00","v":9.88},{"t":"2025-09-09T18:40:00","v":9.33},{"t":"2025-09-10T07:50:00","v":7.87},{"t":"2025-09-10T11:30:00","v":9.5},{"t":"2025-09-10T13:50:00","v":10.16},{"t":"2025-09-10T15:50:00","v":10.22},{"t":"2025-09-11T07:50:00","v":7.81},{"t":"2025-09-11T11:20:00","v":9.24},{"t":"2025-09-11T13:30:00","v":9.39},{"t":"2025-09-11T14:10:00","v":10.06},{"t":"2025-09-11T17:20:00","v":9.56},{"t":"2025-09-11T18:10:00","v":9.05},{"t":"2025-09-14T08:30:00","v":8.48},{"t":"2025-09-14T11:30:00","v":9.26},{"t":"2025-09-14T12:20:00","v":9.65},{"t":"2025-09-14T15:10:00","v":9.95},{"t":"2025-09-14T18:00:00","v":9.36},{"t":"2025-09-15T08:10:00","v":7.92},{"t":"2025-09-15T12:00:00","v":9.45},{"t":"2025-09-15T14:10:00","v":10.13},{"t":"2025-09-15T15:30:00","v":10.2},{"t":"2025-09-15T17:40:00","v":9.09},{"t":"2025-09-16T06:40:00","v":7.66},{"t":"2025-09-16T08:50:00","v":8.14},{"t":"2025-09-16T10:00:00","v":7.94},{"t":"2025-09-16T12:10:00","v":9.5},{"t":"2025-09-16T13:50:00","v":9.88},{"t":"2025-09-17T08:50:00","v":8.3},{"t":"2025-09-17T11:50:00","v":8.88},{"t":"2025-09-17T13:30:00","v":9.78},{"t":"2025-09-17T15:20:00","v":9.85},{"t":"2025-09-18T07:10:00","v":7.76},{"t":"2025-09-18T09:40:00","v":6.97},{"t":"2025-09-18T10:30:00","v":6.71},{"t":"2025-09-18T12:00:00","v":7.27},{"t":"2025-09-18T13:10:00","v":7.08},{"t":"2025-09-18T14:10:00","v":6.65},{"t":"2025-09-18T15:10:00","v":6.8},{"t":"2025-09-21T06:30:00","v":6.19},{"t":"2025-09-21T07:20:00","v":4.75},{"t":"2025-09-21T08:40:00","v":4.75},{"t":"2025-09-21T10:30:00","v":5.17},{"t":"2025-09-21T11:40:00","v":5.25},{"t":"2025-09-21T13:40:00","v":5.33},{"t":"2025-09-21T15:30:00","v":5.4}],"actual_ec":[{"t":"2025-08-21T13:00:00","v":0.738},{"t":"2025-08-21T15:00:00","v":0.8278},{"t":"2025-08-25T09:00:00","v":0.327},{"t":"2025-08-25T16:00:00","v":0.327},{"t":"2025-08-26T12:00:00","v":0.266},{"t":"2025-08-26T16:30:00","v":0.314},{"t":"2025-08-27T11:40:00","v":0.181},{"t":"2025-08-27T14:10:00","v":0.294},{"t":"2025-08-28T13:30:00","v":0.358},{"t":"2025-08-28T15:00:00","v":0.174},{"t":"2025-08-31T08:20:00","v":0.18},{"t":"2025-08-31T12:30:00","v":0.167},{"t":"2025-09-01T08:30:00","v":0.292},{"t":"2025-09-01T12:30:00","v":0.306},{"t":"2025-09-02T08:30:00","v":0.168},{"t":"2025-09-02T15:00:00","v":0.299},{"t":"2025-09-03T09:00:00","v":0.301},{"t":"2025-09-03T15:20:00","v":0.308},{"t":"2025-09-07T08:50:00","v":0.334},{"t":"2025-09-07T15:30:00","v":0.1548},{"t":"2025-09-08T09:30:00","v":0.326},{"t":"2025-09-08T13:50:00","v":0.156},{"t":"2025-09-09T08:30:00","v":0.348},{"t":"2025-09-09T14:10:00","v":0.3},{"t":"2025-09-09T15:40:00","v":0.347},{"t":"2025-09-09T18:40:00","v":0.161},{"t":"2025-09-10T07:50:00","v":0.342},{"t":"2025-09-10T11:30:00","v":0.292},{"t":"2025-09-10T13:50:00","v":0.303},{"t":"2025-09-10T15:50:00","v":0.306},{"t":"2025-09-11T07:50:00","v":0.336},{"t":"2025-09-11T11:20:00","v":0.17},{"t":"2025-09-11T13:30:00","v":0.348},{"t":"2025-09-11T14:10:00","v":0.325},{"t":"2025-09-11T17:20:00","v":0.288},{"t":"2025-09-11T18:10:00","v":0.349},{"t":"2025-09-14T08:30:00","v":0.177},{"t":"2025-09-14T11:30:00","v":0.286},{"t":"2025-09-14T12:20:00","v":0.316},{"t":"2025-09-14T15:10:00","v":0.156},{"t":"2025-09-14T18:00:00","v":0.307},{"t":"2025-09-15T08:10:00","v":0.198},{"t":"2025-09-15T12:00:00","v":0.321},{"t":"2025-09-15T14:10:00","v":0.332},{"t":"2025-09-15T15:30:00","v":0.334},{"t":"2025-09-15T17:40:00","v":0.383},{"t":"2025-09-16T06:40:00","v":0.358},{"t":"2025-09-16T08:50:00","v":0.183},{"t":"2025-09-16T10:00:00","v":0.414},{"t":"2025-09-16T12:10:00","v":0.302},{"t":"2025-09-16T13:50:00","v":0.309},{"t":"2025-09-17T08:50:00","v":0.215},{"t":"2025-09-17T11:50:00","v":0.128},{"t":"2025-09-17T13:30:00","v":0.333},{"t":"2025-09-17T15:20:00","v":0.221},{"t":"2025-09-18T07:10:00","v":0.47},{"t":"2025-09-18T09:40:00","v":0.795},{"t":"2025-09-18T10:30:00","v":0.968},{"t":"2025-09-18T12:00:00","v":0.98},{"t":"2025-09-18T13:10:00","v":0.662},{"t":"2025-09-18T14:10:00","v":0.709},{"t":"2025-09-18T15:10:00","v":0.68},{"t":"2025-09-21T06:30:00","v":0.501},{"t":"2025-09-21T07:20:00","v":4.23},{"t":"2025-09-21T08:40:00","v":4.97},{"t":"2025-09-21T10:30:00","v":4.52},{"t":"2025-09-21T11:40:00","v":4.4},{"t":"2025-09-21T13:40:00","v":4.53},{"t":"2025-09-21T15:30:00","v":3.87}],"train_curve_ph":[{"t":"2025-09-02T15:00:00","n":56},{"t":"2025-09-03T09:00:00","n":57},{"t":"2025-09-03T15:20:00","n":58},{"t":"2025-09-07T08:50:00","n":59},{"t":"2025-09-07T15:30:00","n":60},{"t":"2025-09-08T09:30:00","n":61},{"t":"2025-09-08T13:50:00","n":62},{"t":"2025-09-09T08:30:00","n":63},{"t":"2025-09-09T14:10:00","n":64},{"t":"2025-09-09T15:40:00","n":65},{"t":"2025-09-09T18:40:00","n":66},{"t":"2025-09-10T07:50:00","n":67},{"t":"2025-09-10T11:30:00","n":68},{"t":"2025-09-10T13:50:00","n":69},{"t":"2025-09-10T15:50:00","n":70},{"t":"2025-09-11T07:50:00","n":71},{"t":"2025-09-11T11:20:00","n":72},{"t":"2025-09-11T13:30:00","n":73},{"t":"2025-09-11T14:10:00","n":74},{"t":"2025-09-11T17:20:00","n":75},{"t":"2025-09-11T18:10:00","n":76},{"t":"2025-09-14T08:30:00","n":77},{"t":"2025-09-14T11:30:00","n":78},{"t":"2025-09-14T12:20:00","n":79},{"t":"2025-09-14T15:10:00","n":80},{"t":"2025-09-14T18:00:00","n":81},{"t":"2025-09-15T08:10:00","n":82},{"t":"2025-09-15T12:00:00","n":83},{"t":"2025-09-15T14:10:00","n":84},{"t":"2025-09-15T15:30:00","n":85},{"t":"2025-09-15T17:40:00","n":86},{"t":"2025-09-16T06:40:00","n":87},{"t":"2025-09-16T08:50:00","n":88},{"t":"2025-09-16T10:00:00","n":89},{"t":"2025-09-16T12:10:00","n":90},{"t":"2025-09-16T13:50:00","n":91},{"t":"2025-09-17T08:50:00","n":92},{"t":"2025-09-17T11:50:00","n":93},{"t":"2025-09-17T13:30:00","n":94},{"t":"2025-09-17T15:20:00","n":95},{"t":"2025-09-18T07:10:00","n":96},{"t":"2025-09-18T09:40:00","n":97},{"t":"2025-09-18T10:30:00","n":98},{"t":"2025-09-18T12:00:00","n":99},{"t":"2025-09-18T13:10:00","n":100},{"t":"2025-09-18T14:10:00","n":101},{"t":"2025-09-18T15:10:00","n":102},{"t":"2025-09-21T06:30:00","n":103},{"t":"2025-09-21T07:20:00","n":104},{"t":"2025-09-21T08:40:00","n":105},{"t":"2025-09-21T10:30:00","n":106},{"t":"2025-09-21T11:40:00","n":107},{"t":"2025-09-21T13:40:00","n":108},{"t":"2025-09-21T15:30:00","n":109}],"train_curve_ec":[{"t":"2025-08-21T13:00:00","n":41},{"t":"2025-08-21T15:00:00","n":42},{"t":"2025-08-25T09:00:00","n":43},{"t":"2025-08-25T16:00:00","n":44},{"t":"2025-08-26T12:00:00","n":45},{"t":"2025-08-26T16:30:00","n":46},{"t":"2025-08-27T11:40:00","n":47},{"t":"2025-08-27T14:10:00","n":48},{"t":"2025-08-28T13:30:00","n":49},{"t":"2025-08-28T15:00:00","n":50},{"t":"2025-08-31T08:20:00","n":51},{"t":"2025-08-31T12:30:00","n":52},{"t":"2025-09-01T08:30:00","n":53},{"t":"2025-09-01T12:30:00","n":54},{"t":"2025-09-02T08:30:00","n":55},{"t":"2025-09-02T15:00:00","n":56},{"t":"2025-09-03T09:00:00","n":57},{"t":"2025-09-03T15:20:00","n":58},{"t":"2025-09-07T08:50:00","n":59},{"t":"2025-09-07T15:30:00","n":60},{"t":"2025-09-08T09:30:00","n":61},{"t":"2025-09-08T13:50:00","n":62},{"t":"2025-09-09T08:30:00","n":63},{"t":"2025-09-09T14:10:00","n":64},{"t":"2025-09-09T15:40:00","n":65},{"t":"2025-09-09T18:40:00","n":66},{"t":"2025-09-10T07:50:00","n":67},{"t":"2025-09-10T11:30:00","n":68},{"t":"2025-09-10T13:50:00","n":69},{"t":"2025-09-10T15:50:00","n":70},{"t":"2025-09-11T07:50:00","n":71},{"t":"2025-09-11T11:20:00","n":72},{"t":"2025-09-11T13:30:00","n":73},{"t":"2025-09-11T14:10:00","n":74},{"t":"2025-09-11T17:20:00","n":75},{"t":"2025-09-11T18:10:00","n":76},{"t":"2025-09-14T08:30:00","n":77},{"t":"2025-09-14T11:30:00","n":78},{"t":"2025-09-14T12:20:00","n":79},{"t":"2025-09-14T15:10:00","n":80},{"t":"2025-09-14T18:00:00","n":81},{"t":"2025-09-15T08:10:00","n":82},{"t":"2025-09-15T12:00:00","n":83},{"t":"2025-09-15T14:10:00","n":84},{"t":"2025-09-15T15:30:00","n":85},{"t":"2025-09-15T17:40:00","n":86},{"t":"2025-09-16T06:40:00","n":87},{"t":"2025-09-16T08:50:00","n":88},{"t":"2025-09-16T10:00:00","n":89},{"t":"2025-09-16T12:10:00","n":90},{"t":"2025-09-16T13:50:00","n":91},{"t":"2025-09-17T08:50:00","n":92},{"t":"2025-09-17T11:50:00","n":93},{"t":"2025-09-17T13:30:00","n":94},{"t":"2025-09-17T15:20:00","n":95},{"t":"2025-09-18T07:10:00","n":96},{"t":"2025-09-18T09:40:00","n":97},{"t":"2025-09-18T10:30:00","n":98},{"t":"2025-09-18T12:00:00","n":99},{"t":"2025-09-18T13:10:00","n":100},{"t":"2025-09-18T14:10:00","n":101},{"t":"2025-09-18T15:10:00","n":102},{"t":"2025-09-21T06:30:00","n":103},{"t":"2025-09-21T07:20:00","n":104},{"t":"2025-09-21T08:40:00","n":105},{"t":"2025-09-21T10:30:00","n":106},{"t":"2025-09-21T11:40:00","n":107},{"t":"2025-09-21T13:40:00","n":108},{"t":"2025-09-21T15:30:00","n":109}],"hist_feats":["hist_irr_recent","hist_irr_mid","hist_irr_prior","hist_acid_decay","hist_salt_buildup","hist_hrs_since_fert","hist_hrs_since_irr"],"hourly":{"ph_mae":[0.5406,0.2745,0.3757,0.3573,0.6751,0.0721,0.5386,null,null,null,null,null,null,0.3608,0.2944,0.375,0.7028,null,0.3645,0.0823,0.8555,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"ph_naive":[0.545,0.2529,0.5873,1.0,1.4467,2.0,1.85,null,null,null,null,null,null,1.445,1.44,2.09,2.41,null,1.5133,1.58,1.555,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"ph_n":[6,14,11,7,3,1,3,0,0,0,0,0,0,2,1,1,1,0,3,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"ec_mae":[0.6852,0.2063,0.1103,0.1067,0.0617,0.0549,0.1059,0.0064,null,null,null,null,null,0.1168,0.0727,0.2516,0.0321,null,0.1208,0.1057,0.1119,null,null,0.0603,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"ec_naive":[0.6693,0.2109,0.116,0.1083,0.0612,0.048,0.1057,0.0,null,null,null,null,null,0.103,0.109,0.249,0.03,null,0.1217,0.1135,0.108,null,null,0.064,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"ec_n":[6,15,13,7,4,1,3,1,0,0,0,0,0,2,1,1,1,0,3,2,3,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"labels":["0\u20131h","1\u20132h","2\u20133h","3\u20134h","4\u20135h","5\u20136h","6\u20137h","7\u20138h","8\u20139h","9\u201310h","10\u201311h","11\u201312h","12\u201313h","13\u201314h","14\u201315h","15\u201316h","16\u201317h","17\u201318h","18\u201319h","19\u201320h","20\u201321h","21\u201322h","22\u201323h","23\u201324h","24\u201325h","25\u201326h","26\u201327h","27\u201328h","28\u201329h","29\u201330h","30\u201331h","31\u201332h","32\u201333h","33\u201334h","34\u201335h","35\u201336h","36\u201337h","37\u201338h","38\u201339h","39\u201340h","40\u201341h","41\u201342h","42\u201343h","43\u201344h","44\u201345h","45\u201346h","46\u201347h","47\u201348h"]},"holdout":{"n":20,"mae":0.3093,"naive":1.057,"gain":0.7477,"r2":0.8665,"ec_mae":0.1372,"ec_naive":0.1499,"ec_gain":0.0127,"ec_r2":-0.6049,"pairs":[{"t0":"2025-09-08","t1":"2025-09-09","gap":23.0,"ph_true":7.9,"ph_pred":8.095,"ph_err":0.195,"ph_naive":8.8,"ec_true":0.348,"ec_pred":0.365,"ec_err":0.017},{"t0":"2025-09-09","t1":"2025-09-10","gap":21.2,"ph_true":10.22,"ph_pred":9.93,"ph_err":0.29,"ph_naive":9.33,"ec_true":0.306,"ec_pred":0.1931,"ec_err":0.1129},{"t0":"2025-09-10","t1":"2025-09-11","gap":20.3,"ph_true":7.81,"ph_pred":7.654,"ph_err":0.156,"ph_naive":9.5,"ec_true":0.336,"ec_pred":0.3634,"ec_err":0.0274},{"t0":"2025-09-10","t1":"2025-09-11","gap":26.7,"ph_true":10.06,"ph_pred":9.566,"ph_err":0.494,"ph_naive":10.16,"ec_true":0.325,"ec_pred":0.3695,"ec_err":0.0445},{"t0":"2025-09-10","t1":"2025-09-11","gap":21.5,"ph_true":9.24,"ph_pred":8.927,"ph_err":0.313,"ph_naive":10.16,"ec_true":0.17,"ec_pred":0.2704,"ec_err":0.1004},{"t0":"2025-09-10","t1":"2025-09-11","gap":21.7,"ph_true":9.39,"ph_pred":9.432,"ph_err":0.042,"ph_naive":10.22,"ec_true":0.348,"ec_pred":0.2979,"ec_err":0.0501},{"t0":"2025-09-10","t1":"2025-09-11","gap":25.5,"ph_true":9.56,"ph_pred":8.986,"ph_err":0.574,"ph_naive":10.22,"ec_true":0.288,"ec_pred":0.3764,"ec_err":0.0884},{"t0":"2025-09-10","t1":"2025-09-11","gap":26.3,"ph_true":9.05,"ph_pred":8.914,"ph_err":0.136,"ph_naive":10.06,"ec_true":0.349,"ec_pred":0.3818,"ec_err":0.0328},{"t0":"2025-09-14","t1":"2025-09-15","gap":20.7,"ph_true":7.92,"ph_pred":8.428,"ph_err":0.508,"ph_naive":9.26,"ec_true":0.198,"ec_pred":0.3073,"ec_err":0.1093},{"t0":"2025-09-14","t1":"2025-09-15","gap":20.2,"ph_true":10.13,"ph_pred":9.855,"ph_err":0.275,"ph_naive":9.65,"ec_true":0.332,"ec_pred":0.3019,"ec_err":0.0301},{"t0":"2025-09-14","t1":"2025-09-15","gap":21.5,"ph_true":10.2,"ph_pred":9.914,"ph_err":0.286,"ph_naive":9.36,"ec_true":0.334,"ec_pred":0.3019,"ec_err":0.0321},{"t0":"2025-09-15","t1":"2025-09-16","gap":20.8,"ph_true":8.14,"ph_pred":8.144,"ph_err":0.004,"ph_naive":7.92,"ec_true":0.183,"ec_pred":0.2821,"ec_err":0.0991},{"t0":"2025-09-15","t1":"2025-09-16","gap":22.0,"ph_true":7.94,"ph_pred":8.565,"ph_err":0.625,"ph_naive":9.45,"ec_true":0.414,"ec_pred":0.3292,"ec_err":0.0848},{"t0":"2025-09-15","t1":"2025-09-16","gap":20.7,"ph_true":9.5,"ph_pred":9.436,"ph_err":0.064,"ph_naive":10.13,"ec_true":0.302,"ec_pred":0.3005,"ec_err":0.0015},{"t0":"2025-09-15","t1":"2025-09-16","gap":20.2,"ph_true":9.88,"ph_pred":9.473,"ph_err":0.407,"ph_naive":9.09,"ec_true":0.309,"ec_pred":0.3709,"ec_err":0.0619},{"t0":"2025-09-16","t1":"2025-09-17","gap":20.7,"ph_true":8.3,"ph_pred":8.669,"ph_err":0.369,"ph_naive":9.5,"ec_true":0.215,"ec_pred":0.2921,"ec_err":0.0771},{"t0":"2025-09-16","t1":"2025-09-17","gap":22.0,"ph_true":8.88,"ph_pred":9.195,"ph_err":0.315,"ph_naive":9.88,"ec_true":0.128,"ec_pred":0.2755,"ec_err":0.1475},{"t0":"2025-09-17","t1":"2025-09-18","gap":22.3,"ph_true":7.76,"ph_pred":6.934,"ph_err":0.826,"ph_naive":8.3,"ec_true":0.47,"ec_pred":0.3312,"ec_err":0.1388},{"t0":"2025-09-17","t1":"2025-09-18","gap":21.8,"ph_true":6.97,"ph_pred":6.726,"ph_err":0.244,"ph_naive":8.88,"ec_true":0.795,"ec_pred":0.1426,"ec_err":0.6524},{"t0":"2025-09-17","t1":"2025-09-18","gap":24.2,"ph_true":7.27,"ph_pred":7.207,"ph_err":0.063,"ph_naive":8.88,"ec_true":0.98,"ec_pred":0.1441,"ec_err":0.8359}]},"skip_chart":{"consec_train":{"0\u20132h":2,"2\u20138h":20,"8\u201324h":16,"24h+":17},"eval_consec":{"0\u20132h":19,"2\u20138h":22,"8\u201324h":9,"24h+":3},"skip_train":{"0\u20132h":0,"2\u20138h":58,"8\u201324h":73,"24h+":5},"skip_holdout":{"0\u20132h":0,"2\u20138h":0,"8\u201324h":16,"24h+":0},"warmup_ph":55,"warmup_ec":40,"n_skips":136,"n_consec":108,"n_eval":53,"n_holdout":16}};
+
+
+// Colors
+const BIN_COLORS = {
+ '0-2': '#2563a8',
+ '2-8h': '#92580a',
+ '8-24h': '#0d7a5f',
+ '24h+': '#6b21a8'
+};
+const BIN_BG = {
+ '0-2': 'rgba(37,99,168,.75)',
+ '2-8h': 'rgba(146,88,10,.75)',
+ '8-24h': 'rgba(13,122,95,.75)',
+ '24h+': 'rgba(107,33,168,.75)'
+};
+const DATA_GAP_LABELS = ['0-2h','2-8h','8-24h','24h+'];
+const DATA_GAP_COLORS = ['rgba(37,99,168,.75)','rgba(146,88,10,.75)','rgba(6,95,70,.75)','rgba(107,33,168,.75)'];
+const RESULT_BIN_KEYS = ['0-2','2-8h','8-24h','24h+'];
+const SUMMARY_BIN_MAP = {
+ '0-2': ['0–2h no fert', '0–2h + fert'],
+ '2-8h': ['2–8h'],
+ '8-24h': ['8–24h'],
+ '24h+': ['24h+']
+};
+const HIST_FEATS = new Set(RAW.hist_feats || []);
+const COLORS = { model:'#0d7a5f', naive:'#5a5850', mean_trend:'#92580a', global_mean:'#b91c1c' };
+
+function combineBins(model) {
+ const summary = {};
+ RESULT_BIN_KEYS.forEach((label) => {
+ const rawKeys = SUMMARY_BIN_MAP[label] || [label];
+ const rows = rawKeys.map((key) => model.bins[key]).filter(Boolean);
+ const n = rows.reduce((sum, row) => sum + (row.n || 0), 0);
+ const mae = n ? rows.reduce((sum, row) => sum + (row.mae || 0) * (row.n || 0), 0) / n : null;
+ const naive = n ? rows.reduce((sum, row) => sum + (row.naive || 0) * (row.n || 0), 0) / n : null;
+ summary[label] = { n, mae, naive };
+ });
+ return summary;
+}
+
+const charts = {};
+function mkChart(id, cfg) {
+ if (charts[id]) charts[id].destroy();
+ const el = document.getElementById(id); if (!el) return;
+ charts[id] = new Chart(el, cfg);
+}
+function setEl(id, v) { const e=document.getElementById(id); if(e) e.textContent=v; }
+function showSection(id, el) {
+ document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+ document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+ document.getElementById(id).classList.add('active'); el.classList.add('active'); return false;
+}
+
+const baseOpts = {
+ responsive:true, maintainAspectRatio:false,
+ plugins:{ legend:{display:false}, tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8} },
+ scales:{ x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'}}, y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'}} }
+};
+function withLegend(opts) {
+ return {...opts, plugins:{...opts.plugins, legend:{display:true,labels:{color:'#a8a69f',boxWidth:12,font:{size:10}}}}};
+}
+function withAxes(opts, xT, yT) {
+ return {...opts, scales:{
+ x:{...opts.scales.x, ticks:{...opts.scales.x.ticks,maxTicksLimit:12}, title:{display:!!xT,text:xT,color:'#a8a69f',font:{size:10}}},
+ y:{...opts.scales.y, title:{display:!!yT,text:yT,color:'#a8a69f',font:{size:10}}}
+ }};
+}
+
+function binColor(r) {
+ if (!r) return COLORS.naive;
+ if (r.gap <= 2) return BIN_BG['0-2'];
+ if (r.gap <= 8) return BIN_BG['2-8h'];
+ if (r.gap <= 24) return BIN_BG['8-24h'];
+ return BIN_BG['24h+'];
+}
+
+// OVERVIEW
+function buildOverview() {
+ const ph=RAW.model_ph, ec=RAW.model_ec, b=RAW.baselines;
+ setEl('ov-ph-mae', ph.mae.toFixed(4));
+ setEl('ov-ph-gain', ((1-ph.mae/ph.naive_mae)*100).toFixed(1)+'% vs naive');
+ setEl('ov-ph-r2', ph.r2.toFixed(4));
+ setEl('ov-ph-rmse', 'RMSE '+ph.rmse.toFixed(4));
+ setEl('ov-ec-mae', ec.mae.toFixed(4));
+ setEl('ov-ec-gain', ((1-ec.mae/ec.naive_mae)*100).toFixed(1)+'% vs naive');
+ setEl('ov-ec-r2', ec.r2.toFixed(4));
+ setEl('ov-ec-rmse', 'RMSE '+ec.rmse.toFixed(4));
+
+ // pH baseline comparison
+ mkChart('chart-compare-mae',{type:'bar',data:{
+ labels:['Global Mean','Mean Trend','Carry-Forward','Model'],
+ datasets:[{data:[b.ph.global_mean_mae,b.ph.mean_trend_mae,b.ph.naive_mae,ph.mae],
+ backgroundColor:[COLORS.global_mean,COLORS.mean_trend,COLORS.naive,COLORS.model],borderRadius:5}]
+ },options:withAxes(baseOpts,'','pH MAE')});
+
+ // EC baseline comparison
+ mkChart('chart-compare-r2',{type:'bar',data:{
+ labels:['Global Mean','Mean Trend','Carry-Forward','Model'],
+ datasets:[{data:[b.ec.global_mean_mae,b.ec.mean_trend_mae,b.ec.naive_mae,ec.mae],
+ backgroundColor:[COLORS.global_mean,COLORS.mean_trend,COLORS.naive,COLORS.model],borderRadius:5}]
+ },options:withAxes(baseOpts,'','EC MAE')});
+
+ // H AVP
+ const pe=ph.eval;
+ mkChart('chart-avp-ph',{type:'line',data:{
+ labels:pe.map(r=>r.t1.slice(5,16)),
+ datasets:[
+ {label:'Actual',data:pe.map(r=>r.true),borderColor:'#0d7a5f',borderWidth:1.8,pointRadius:4,pointBackgroundColor:'#0d7a5f',tension:.12,fill:false},
+ {label:'Predicted',data:pe.map(r=>r.pred),borderColor:'rgba(37,99,168,.8)',borderWidth:1.5,borderDash:[5,3],pointRadius:3.5,pointBackgroundColor:pe.map(r=>binColor(r)),tension:.12,fill:false},
+ ]
+ },options:withLegend(withAxes(baseOpts,'','pH'))});
+
+ // EC AVP
+ const ee=ec.eval;
+ mkChart('chart-avp-ec',{type:'line',data:{
+ labels:ee.map(r=>r.t1.slice(5,16)),
+ datasets:[
+ {label:'Actual',data:ee.map(r=>r.true),borderColor:'#0d7a5f',borderWidth:1.8,pointRadius:4,pointBackgroundColor:'#0d7a5f',tension:.12,fill:false},
+ {label:'Predicted',data:ee.map(r=>r.pred),borderColor:'rgba(37,99,168,.8)',borderWidth:1.5,borderDash:[5,3],pointRadius:3.5,pointBackgroundColor:ee.map(r=>binColor(r)),tension:.12,fill:false},
+ ]
+ },options:withLegend(withAxes(baseOpts,'','EC (mS/cm)'))});
+
+ // Error histograms
+ function histBins(arr,lo,hi,step){
+ const labels=[],counts=[];
+ for(let v=lo;v<hi;v=Math.round((v+step)*100)/100){labels.push(v.toFixed(1));counts.push(arr.filter(x=>x>=v&&x<v+step).length);}
+ return{labels,counts};
+ }
+ const phErrs=pe.map(r=>+(r.true-r.pred).toFixed(3));
+ const phH=histBins(phErrs,-3,3,.4);
+ mkChart('chart-err-ph',{type:'bar',data:{labels:phH.labels,datasets:[{data:phH.counts,
+ backgroundColor:phH.labels.map(l=>+l>=0?'rgba(13,122,95,.7)':'rgba(185,28,28,.7)'),borderRadius:2}]},
+ options:withAxes(baseOpts,'Error (true-pred)','Count')});
+ const ecErrs=ee.map(r=>+(r.true-r.pred).toFixed(4));
+ const ecH=histBins(ecErrs,-.8,.8,.1);
+ mkChart('chart-err-ec',{type:'bar',data:{labels:ecH.labels,datasets:[{data:ecH.counts,
+ backgroundColor:ecH.labels.map(l=>+l>=0?'rgba(13,122,95,.7)':'rgba(185,28,28,.7)'),borderRadius:2}]},
+ options:withAxes(baseOpts,'Error (true-pred)','Count')});
+}
+
+// DATA SECTION
+function buildDataSection() {
+ const g=RAW.gap_data||{};
+ const sc=RAW.skip_chart||{};
+ const phEvalBins = {
+ '0-2h': (RAW.model_ph?.bins?.['0–2h no fert']?.n||0) + (RAW.model_ph?.bins?.['0–2h + fert']?.n||0),
+ '2-8h': RAW.model_ph?.bins?.['2–8h']?.n||0,
+ '8-24h': RAW.model_ph?.bins?.['8–24h']?.n||0,
+ '24h+': RAW.model_ph?.bins?.['24h+']?.n||0
+ };
+ const phTrainBins = {
+ '0-2h': sc.consec_train?.['0–2h']||0,
+ '2-8h': sc.consec_train?.['2–8h']||0,
+ '8-24h': sc.consec_train?.['8–24h']||0,
+ '24h+': sc.consec_train?.['24h+']||0
+ };
+ const binL=['0-2h','2-8h','8-24h','24h+'];
+ const dataBG=['rgba(37,99,168,.75)','rgba(146,88,10,.75)','rgba(6,95,70,.75)','rgba(107,33,168,.75)'];
+ const binLabels=['0-2h','2-8h','8-24h','24h+'];
+
+ // Chart 1: all intervals
+ mkChart('chart-raw-ph',{type:'bar',data:{labels:binLabels,
+ datasets:[{label:'All 108 intervals',data:binL.map(k=>g.all_ph ? g.all_ph[k]||0 : 0),
+ backgroundColor:dataBG,borderRadius:4}]
+ },options:{responsive:true,maintainAspectRatio:false,
+ plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8}},
+ scales:{x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f',font:{size:12}}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},title:{display:true,text:'Intervals',color:'#a8a69f',font:{size:11}}}}}});
+
+ // Chart 2: EC train vs test only
+ mkChart('chart-raw-ec',{type:'bar',data:{labels:binLabels,
+ datasets:[
+ {label:'EC Train (n=40)',data:binL.map(k=>g.train_ec ? g.train_ec[k]||0 : 0),backgroundColor:'rgba(13,122,95,.8)',borderRadius:3},
+ {label:'EC Test (n=69)',data:binL.map(k=>g.test_ec ? g.test_ec[k]||0 : 0), backgroundColor:'rgba(13,122,95,.28)',borderRadius:3,borderColor:'rgba(13,122,95,.8)',borderWidth:1.5},
+ ]
+ },options:{responsive:true,maintainAspectRatio:false,
+ plugins:{legend:{display:true,labels:{color:'#a8a69f',boxWidth:14,font:{size:11}}},tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8}},
+ scales:{x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f',font:{size:12}}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},title:{display:true,text:'Intervals',color:'#a8a69f',font:{size:11}}}}}});
+
+ // Chart 3: pH train vs test only
+ mkChart('chart-trainsize',{type:'bar',data:{labels:binLabels,
+ datasets:[
+ {label:'pH Train (n=55)',data:binL.map(k=>phTrainBins[k]||0),backgroundColor:'rgba(37,99,168,.8)',borderRadius:3},
+ {label:'pH Test (n=54)',data:binL.map(k=>phEvalBins[k]||0), backgroundColor:'rgba(37,99,168,.28)',borderRadius:3,borderColor:'rgba(37,99,168,.8)',borderWidth:1.5},
+ ]
+ },options:{responsive:true,maintainAspectRatio:false,
+ plugins:{legend:{display:true,labels:{color:'#a8a69f',boxWidth:14,font:{size:11}}},tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8}},
+ scales:{x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f',font:{size:12}}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},title:{display:true,text:'Intervals',color:'#a8a69f',font:{size:11}}}}}});
+}
+
+
+function buildWorkflow() {
+ const tcPH = RAW.train_curve_ph;
+ const tcEC = RAW.train_curve_ec;
+ mkChart('chart-gaps',{type:'line',data:{
+ labels: tcPH.map(r=>r.t.slice(5,16)),
+ datasets:[
+ {label:'pH train size', data:tcPH.map(r=>r.n), borderColor:'#2563a8', borderWidth:2, pointRadius:2, tension:.1, fill:false},
+ {label:'EC train size', data:tcEC.map((r,i)=>({x:tcEC[i].t.slice(5,16),y:r.n})).map(d=>d.y), borderColor:'#0d7a5f', borderWidth:2, pointRadius:2, tension:.1, fill:false},
+ ]
+ },options:{...withLegend(withAxes(baseOpts,'Measurement','Training set size')),
+ scales:{
+ x:{...baseOpts.scales.x, ticks:{maxTicksLimit:10,color:'#a8a69f'}},
+ y:{...baseOpts.scales.y, title:{display:true,text:'Training set size',color:'#a8a69f',font:{size:10}},
+ min:38, suggestedMax:112}
+ }}});
+}
+
+// RESULTS
+function buildResults() {
+ const ph=RAW.model_ph, ec=RAW.model_ec, b=RAW.baselines;
+ const phBins=combineBins(ph), ecBins=combineBins(ec);
+ setEl('res-ph-mae', ph.mae.toFixed(4));
+ setEl('res-ph-r2', 'R? ' + ph.r2.toFixed(4));
+ setEl('res-ph-gain', ((1-ph.mae/ph.naive_mae)*100).toFixed(1)+'% better');
+ setEl('res-ec-mae', ec.mae.toFixed(4));
+ setEl('res-ec-r2', 'R? ' + ec.r2.toFixed(4));
+ setEl('res-ec-gain', ((1-ec.mae/ec.naive_mae)*100).toFixed(1)+'% better');
+
+ const bgArr = RESULT_BIN_KEYS.map(k=>BIN_BG[k]);
+
+ mkChart('chart-ph-gaps',{type:'bar',data:{
+ labels:RESULT_BIN_KEYS,
+ datasets:[
+ {label:'Model MAE', data:RESULT_BIN_KEYS.map(k=>phBins[k]?.mae||0), backgroundColor:bgArr, borderRadius:4},
+ {label:'Naive MAE', data:RESULT_BIN_KEYS.map(k=>phBins[k]?.naive||0), backgroundColor:'rgba(180,178,169,.25)', borderRadius:4, borderColor:'rgba(180,178,169,.5)',borderWidth:1},
+ ]
+ },options:withLegend(withAxes(baseOpts,'','pH MAE'))});
+
+ mkChart('chart-ec-gaps',{type:'bar',data:{
+ labels:RESULT_BIN_KEYS,
+ datasets:[
+ {label:'Model MAE', data:RESULT_BIN_KEYS.map(k=>ecBins[k]?.mae||0), backgroundColor:bgArr, borderRadius:4},
+ {label:'Naive MAE', data:RESULT_BIN_KEYS.map(k=>ecBins[k]?.naive||0), backgroundColor:'rgba(180,178,169,.25)', borderRadius:4, borderColor:'rgba(180,178,169,.5)',borderWidth:1},
+ ]
+ },options:withLegend(withAxes(baseOpts,'','EC MAE'))});
+
+ mkChart('chart-ph-naive',{type:'bar',data:{
+ labels:['Global Mean','Mean Trend','Carry-Forward','Model'],
+ datasets:[{data:[b.ph.global_mean_mae,b.ph.mean_trend_mae,b.ph.naive_mae,ph.mae],
+ backgroundColor:[COLORS.global_mean,COLORS.mean_trend,COLORS.naive,COLORS.model],borderRadius:5}]
+ },options:withAxes(baseOpts,'','pH MAE')});
+
+ mkChart('chart-ec-naive',{type:'bar',data:{
+ labels:['Global Mean','Mean Trend','Carry-Forward','Model'],
+ datasets:[{data:[b.ec.global_mean_mae,b.ec.mean_trend_mae,b.ec.naive_mae,ec.mae],
+ backgroundColor:[COLORS.global_mean,COLORS.mean_trend,COLORS.naive,COLORS.model],borderRadius:5}]
+ },options:withAxes(baseOpts,'','EC MAE')});
+
+ // Combined gap table
+ const tbody=document.getElementById('res-table-body');
+ if(tbody){
+ tbody.innerHTML='';
+ RESULT_BIN_KEYS.forEach(k=>{
+ const pd=phBins[k]||{}, ed=ecBins[k]||{};
+ if(!pd.n && !ed.n) return;
+ const phImp=pd.naive&&pd.mae ? ((1-pd.mae/pd.naive)*100).toFixed(1)+'%' : '-';
+ const ecImp=ed.naive&&ed.mae ? ((1-ed.mae/ed.naive)*100).toFixed(1)+'%' : '-';
+ const phCls=pd.mae<pd.naive?'win':'';
+ const ecCls=ed.mae<ed.naive?'win':'';
+ tbody.innerHTML+=`<tr>
+ <td><span style="display:inline-block;padding:2px 7px;border-radius:3px;font-size:.78em;background:${BIN_BG[k].replace('.75)', '.18)')};color:${BIN_COLORS[k]}">${k}</span></td>
+ <td>${pd.n||0}</td>
+ <td style="color:var(--teal)">${pd.mae?.toFixed(4)||'-'}</td>
+ <td>${pd.naive?.toFixed(4)||'-'}</td>
+ <td class="${phCls}">${phImp}</td>
+ <td style="color:var(--blue)">${ed.mae?.toFixed(4)||'-'}</td>
+ <td>${ed.naive?.toFixed(4)||'-'}</td>
+ <td class="${ecCls}">${ecImp}</td>
+ </tr>`;
+ });
+ }
+}
+
+// GAP ANALYSIS
+function buildGapAnalysis() {
+ const gapAnalysisKeys = ['0–2h no fert','0–2h + fert','2–8h','8–24h','24h+'];
+ const gapAnalysisLabel = {
+ '0–2h no fert': '0-2 no fert',
+ '0–2h + fert': '0-2 with fert',
+ '2–8h': '2–8h',
+ '8–24h': '8–24h',
+ '24h+': '24h+'
+ };
+ const gapAnalysisBg = {
+ '0–2h no fert': 'rgba(37,99,168,.75)',
+ '0–2h + fert': 'rgba(37,99,168,.35)',
+ '2–8h': 'rgba(146,88,10,.75)',
+ '8–24h': 'rgba(13,122,95,.75)',
+ '24h+': 'rgba(107,33,168,.75)'
+ };
+ const gapAnalysisColor = {
+ '0–2h no fert': '#2563a8',
+ '0–2h + fert': '#2563a8',
+ '2–8h': '#92580a',
+ '8–24h': '#0d7a5f',
+ '24h+': '#6b21a8'
+ };
+ ['ph','ec'].forEach(t=>{
+ const tbl=document.getElementById(`gap-${t}-table`); if(!tbl) return;
+ const tbody=tbl.querySelector('tbody'); if(!tbody) return;
+ const bins=RAW[`model_${t}`].bins||{};
+ tbody.innerHTML='';
+ gapAnalysisKeys.forEach(k=>{
+ const d=bins[k]||{}; if(!d.n) return;
+ const beats=d.mae<d.naive;
+ const imp=d.naive&&d.mae?((1-d.mae/d.naive)*100).toFixed(1)+'%':'-';
+ tbody.innerHTML+=`<tr>
+ <td><span style="display:inline-block;padding:2px 7px;border-radius:3px;font-size:.78em;background:${gapAnalysisBg[k].replace('.75)', '.18)').replace('.35)', '.12)')};color:${gapAnalysisColor[k]}">${gapAnalysisLabel[k]}</span></td>
+ <td>${d.n}</td>
+ <td style="color:var(--teal)">${d.mae.toFixed(4)}</td>
+ <td>${d.naive.toFixed(4)}</td>
+ <td class="${beats?'win':'lose'}">${beats?'+':'-'}${Math.abs(parseFloat(imp))}%</td>
+ </tr>`;
+ });
+ });
+
+ // Separate hourly charts for pH and EC
+ const h=RAW.hourly;
+ if(!h) return;
+
+ const labels=h.labels; // '0-1h', '1-2h', etc.
+
+ // pH chart - show bars with n label on top
+ const phHasData = labels.map((_,i)=>h.ph_n[i]>0);
+ const phL = labels.filter((_,i)=>phHasData[i]);
+ const phMAE = h.ph_mae.filter((_,i)=>phHasData[i]).map(v=>v===null?null:+v);
+ const phN = h.ph_n.filter((_,i)=>phHasData[i]);
+
+ // Color bars by gap bin
+ function hourBinColor(label) {
+ const h=parseInt(label);
+ if(h<2) return 'rgba(37,99,168,.75)';
+ if(h<8) return 'rgba(146,88,10,.75)';
+ if(h<24) return 'rgba(6,95,70,.75)';
+ return 'rgba(107,33,168,.75)';
+ }
+ const phBgColors = phL.map(l=>hourBinColor(l));
+ const ecHasData = labels.map((_,i)=>h.ec_n[i]>0);
+ const ecL = labels.filter((_,i)=>ecHasData[i]);
+ const ecMAE = h.ec_mae.filter((_,i)=>ecHasData[i]).map(v=>v===null?null:+v);
+ const ecN = h.ec_n.filter((_,i)=>ecHasData[i]);
+ const ecBgColors = ecL.map(l=>hourBinColor(l));
+
+ const hourlyOpts = (yLabel, nArr) => ({
+ responsive:true, maintainAspectRatio:false,
+ plugins:{
+ legend:{display:false},
+ tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8,
+ callbacks:{label:(c)=>`MAE=${c.raw} n=${nArr[c.dataIndex]}`}},
+ // show n on top of each bar
+ datalabels: false,
+ },
+ scales:{
+ x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f',maxRotation:45,font:{size:9}},
+ title:{display:true,text:'Gap length (hours)',color:'#a8a69f',font:{size:10}}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},
+ title:{display:true,text:yLabel,color:'#a8a69f',font:{size:10}}}
+ }
+ });
+
+ // Custom plugin to draw n labels on top of bars
+ const nLabelPlugin = (nArr, color) => ({
+ id:'nLabel',
+ afterDatasetsDraw(chart){
+ const {ctx,scales:{x,y}}=chart;
+ ctx.save();
+ ctx.font='bold 9px monospace';
+ ctx.fillStyle=color;
+ ctx.textAlign='center';
+ chart.getDatasetMeta(0).data.forEach((bar,i)=>{
+ if(nArr[i]>0){
+ const barX=bar.x;
+ const barTop=y.getPixelForValue(chart.data.datasets[0].data[i]);
+ ctx.fillText('n='+nArr[i], barX, barTop-4);
+ }
+ });
+ ctx.restore();
+ }
+ });
+
+ mkChart('chart-err-by-hour-ph',{type:'bar',data:{labels:phL,
+ datasets:[{data:phMAE,backgroundColor:phBgColors,borderRadius:4,borderWidth:0}]
+ },options:hourlyOpts('pH MAE',phN),plugins:[nLabelPlugin(phN,'#a8a69f')]});
+
+ mkChart('chart-err-by-hour-ec',{type:'bar',data:{labels:ecL,
+ datasets:[{data:ecMAE,backgroundColor:ecBgColors,borderRadius:4,borderWidth:0}]
+ },options:hourlyOpts('EC MAE',ecN),plugins:[nLabelPlugin(ecN,'#a8a69f')]});
+}
+
+
+
+function buildTimeSeries() {
+ const ph=RAW.model_ph, ec=RAW.model_ec;
+ const PH_LINE = '#2563a8';
+ const EC_LINE = '#0d7a5f';
+ const ACTUAL = '#111111';
+ const ERROR = '#dc2626';
+ const fmtLabel = (t) => t.slice(5,16);
+
+ const connectorPlugin = (id, actualIndex, predIndex) => ({
+ id,
+ afterDatasetsDraw(chart) {
+ const actualMeta = chart.getDatasetMeta(actualIndex);
+ const predMeta = chart.getDatasetMeta(predIndex);
+ if (!actualMeta || !predMeta) return;
+ const ctx = chart.ctx;
+ ctx.save();
+ ctx.strokeStyle = ERROR;
+ ctx.lineWidth = 1.2;
+ ctx.globalAlpha = 0.95;
+ for (let i = 0; i < Math.min(actualMeta.data.length, predMeta.data.length); i += 1) {
+ const a = actualMeta.data[i];
+ const p = predMeta.data[i];
+ if (!a || !p || a.skip || p.skip) continue;
+ ctx.beginPath();
+ ctx.moveTo(a.x, a.y);
+ ctx.lineTo(p.x, p.y);
+ ctx.stroke();
+ }
+ ctx.restore();
+ }
+ });
+
+ const avpOpts = (yLabel) => ({
+ responsive:true, maintainAspectRatio:false,
+ plugins:{
+ legend:{display:true, labels:{color:'#e8e6e0', boxWidth:14, font:{size:11}}},
+ tooltip:{backgroundColor:'#1e2533', titleColor:'#e8e6e0', bodyColor:'#a8a69f', padding:8,
+ callbacks:{label: ctx => `${ctx.dataset.label}: ${(+ctx.raw).toFixed(3)}`}}
+ },
+ scales:{
+ x:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f', maxRotation:0, maxTicksLimit:12}},
+ y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true, text:yLabel, color:'#a8a69f', font:{size:11}}}
+ }});
+
+ const phE=ph.eval;
+ mkChart('chart-avp-ph2',{type:'line',data:{labels:phE.map(r=>fmtLabel(r.t1)),datasets:[
+ {label:'Actual',data:phE.map(r=>r.true),type:'line',
+ borderColor:ACTUAL,borderWidth:1.5,borderDash:[2,5],pointRadius:4.6,pointBackgroundColor:ACTUAL,
+ pointBorderColor:ACTUAL,tension:0,fill:false},
+ {label:'Predicted',data:phE.map(r=>r.pred),type:'line',
+ borderColor:PH_LINE,borderWidth:1.5,borderDash:[2,5],pointRadius:4.6,pointBackgroundColor:PH_LINE,
+ pointBorderColor:PH_LINE,tension:0,fill:false},
+ ]},options:avpOpts('pH'),plugins:[connectorPlugin('ts-pair-ph',0,1)]});
+
+ const ecE=ec.eval;
+ mkChart('chart-avp-ec2',{type:'line',data:{labels:ecE.map(r=>fmtLabel(r.t1)),datasets:[
+ {label:'Actual',data:ecE.map(r=>r.true),type:'line',
+ borderColor:ACTUAL,borderWidth:1.5,borderDash:[2,5],pointRadius:4.6,pointBackgroundColor:ACTUAL,
+ pointBorderColor:ACTUAL,tension:0,fill:false},
+ {label:'Predicted',data:ecE.map(r=>r.pred),type:'line',
+ borderColor:EC_LINE,borderWidth:1.5,borderDash:[2,5],pointRadius:4.6,pointBackgroundColor:EC_LINE,
+ pointBorderColor:EC_LINE,tension:0,fill:false},
+ ]},options:avpOpts('EC (mS/cm)'),plugins:[connectorPlugin('ts-pair-ec',0,1)]});
+}
+
+
+// SCATTER
+function buildScatter() {
+ const ph=RAW.model_ph, ec=RAW.model_ec;
+ document.getElementById('scatter-ph-title').innerHTML = `pH - True vs Predicted &nbsp;<span style='font-size:1.2em;color:var(--teal);font-weight:700'>R? = ${ph.r2}</span>`;
+ document.getElementById('scatter-ec-title').innerHTML = `EC - True vs Predicted &nbsp;<span style='font-size:1.2em;color:var(--teal);font-weight:700'>R? = ${ec.r2}</span>`;
+ function scatterChart(id, evalData, target) {
+ const mn=Math.min(...evalData.map(r=>Math.min(r.true,r.pred)))-.3;
+ const mx=Math.max(...evalData.map(r=>Math.max(r.true,r.pred)))+.3;
+ mkChart(id,{type:'scatter',data:{datasets:[
+ {data:evalData.map(r=>({x:r.true,y:r.pred})), pointBackgroundColor:evalData.map(r=>binColor(r)), pointRadius:6, pointHoverRadius:8, label:''},
+ {type:'line',data:[{x:mn,y:mn},{x:mx,y:mx}], borderColor:'#111111', borderWidth:1.2, borderDash:[4,3], pointRadius:0, label:'Perfect'},
+ ]},options:{...baseOpts, plugins:{...baseOpts.plugins,legend:{display:false}},
+ scales:{
+ x:{...baseOpts.scales.x, title:{display:true,text:`True ${target}`,color:'#a8a69f',font:{size:11}}},
+ y:{...baseOpts.scales.y, title:{display:true,text:`Predicted ${target}`,color:'#a8a69f',font:{size:11}}}
+ }}});
+ }
+ scatterChart('chart-scatter-ph', ph.eval, 'pH');
+ scatterChart('chart-scatter-ec', ec.eval, 'EC');
+}
+
+// FEATURES
+function buildFeatures() {
+ function renderBars(cid, imp, titleId) {
+ const el = document.getElementById(cid); if (!el) return;
+ const sorted = Object.entries(imp).sort((a,b)=>b[1]-a[1]);
+ const maxV = Math.max(...sorted.map(([,v])=>v));
+ el.innerHTML = sorted.map(([name,val]) => {
+ const hist = HIST_FEATS.has(name);
+ const pct = (val / maxV * 100).toFixed(1);
+ const color = hist ? '#d97706' : '#2563a8';
+ const badge = hist
+ ? `<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:.68em;background:rgba(217,119,6,.15);color:#d97706;font-family:monospace;flex-shrink:0">hist</span>`
+ : `<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:.68em;background:rgba(37,99,168,.15);color:#2563a8;font-family:monospace;flex-shrink:0">win</span>`;
+ return `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.42rem">
+ <div style="font-family:monospace;font-size:.82rem;color:#111111;font-weight:600;width:195px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</div>
+ ${badge}
+ <div style="flex:1;height:9px;background:#2a2925;border-radius:2px">
+ <div style="width:${pct}%;height:100%;background:${color};border-radius:2px"></div>
+ </div>
+ <div style="font-family:monospace;font-size:.68rem;color:#6e6b63;width:36px;text-align:right">${(val*100).toFixed(1)}%</div>
+ </div>`;
+ }).join('');
+ const te = document.getElementById(titleId);
+ if (te) te.textContent = `${titleId.includes('ph') ? 'pH' : 'EC'} - Feature Importance (${sorted.length} features)`;
+}
+renderBars('feat-ph-bars', RAW.model_ph.imp, 'feat-ph-title');
+ renderBars('feat-ec-bars', RAW.model_ec.imp, 'feat-ec-title');
+}
+
+// INIT
+function init() {
+ buildOverview();
+ buildDataSection();
+ buildSkipChart();
+ buildWorkflow();
+ buildResults();
+ buildGapAnalysis();
+ buildTimeSeries();
+ buildScatter();
+ buildFeatures();
+ buildHoldout();
+}
+init();
+// SKIP AUGMENTATION CHART
+function buildSkipChart() {
+ const colCT={"0\u20132h": 2, "2\u20138h": 20, "8\u201324h": 16, "24h+": 17}, colEV={"0\u20132h": 19, "2\u20138h": 22, "8\u201324h": 9, "24h+": 3}, colST={"0\u20132h": 0, "2\u20138h": 58, "8\u201324h": 73, "24h+": 5}, colSH={"0\u20132h": 0, "2\u20138h": 0, "8\u201324h": 16, "24h+": 0};
+ const keys=['0\u20132h','2\u20138h','8\u201324h','24h+'];
+ const labels=['0\u20132h','2\u20138h','8\u201324h','24h+'];
+ mkChart('chart-skip-augmentation',{
+ type:'bar',
+ data:{labels,datasets:[
+ {label:'Consec train / warmup (55)',data:keys.map(k=>colCT[k]||0),
+ backgroundColor:'rgba(37,99,168,.9)',borderRadius:3},
+ {label:'Eval - walk-forward test (53)',data:keys.map(k=>colEV[k]||0),
+ backgroundColor:'rgba(249,115,22,.85)',borderRadius:3},
+ {label:'Skip train intervals (136)',data:keys.map(k=>colST[k]||0),
+ backgroundColor:'rgba(37,99,168,.3)',borderColor:'rgba(37,99,168,.75)',
+ borderWidth:1.5,borderRadius:3}
+ ]},
+ options:{responsive:true,maintainAspectRatio:false,
+ plugins:{
+ legend:{display:true,labels:{color:'#a8a69f',boxWidth:14,font:{size:11}}},
+ tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8,
+ callbacks:{afterBody:items=>{
+ const b=keys[items[0].dataIndex];
+ return 'Total: '+((colCT[b]||0)+(colEV[b]||0)+(colST[b]||0)+(colSH[b]||0));
+ }}}},
+ scales:{
+ x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f',font:{size:13}}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},
+ title:{display:true,text:'Number of intervals',color:'#a8a69f',font:{size:11}}}
+ }}
+ });
+}
+
+// HOLDOUT CHARTS
+function buildHoldout() {
+ const h=RAW.holdout;
+ if(!h||!h.pairs) return;
+ const gapBuckets = {'20-22h':0,'22-24h':0,'24-27h':0};
+ h.pairs.forEach((p) => {
+ if (p.gap < 22) gapBuckets['20-22h'] += 1;
+ else if (p.gap < 24) gapBuckets['22-24h'] += 1;
+ else gapBuckets['24-27h'] += 1;
+ });
+
+ const gapBody=document.getElementById('holdout-gap-body');
+ if (gapBody) {
+ gapBody.innerHTML='';
+ Object.entries(gapBuckets).forEach(([label,count]) => {
+ gapBody.innerHTML += `<tr><td>${label}</td><td>${count}</td></tr>`;
+ });
+ }
+
+ const detailBody=document.getElementById('holdout-detail-body');
+ if (detailBody) {
+ detailBody.innerHTML='';
+ h.pairs.forEach((p, idx) => {
+ const naiveErr = Math.abs(p.ph_naive - p.ph_true);
+ detailBody.innerHTML += `<tr>
+ <td>${idx + 1}</td>
+ <td>${p.t0}</td>
+ <td>${p.t1}</td>
+ <td>${p.gap.toFixed(1)}h</td>
+ <td>${p.ph_true.toFixed(3)}</td>
+ <td>${p.ph_pred.toFixed(3)}</td>
+ <td>${p.ph_naive.toFixed(3)}</td>
+ <td class="${p.ph_err <= 0.35 ? 'win' : 'lose'}">${p.ph_err.toFixed(3)}</td>
+ <td class="${p.ph_err <= naiveErr ? 'win' : 'lose'}">${naiveErr.toFixed(3)}</td>
+ </tr>`;
+ });
+ }
+
+ const makeScatter = (canvasId, pairs, xKey, yKey, color, xTitle, yTitle, pad) => {
+ const vals = pairs.flatMap((p) => [p[xKey], p[yKey]]);
+ const mn = Math.min(...vals) - pad;
+ const mx = Math.max(...vals) + pad;
+ mkChart(canvasId,{type:'scatter',data:{datasets:[
+ {label:'Holdout pairs',data:pairs.map((p)=>({x:p[xKey],y:p[yKey]})),
+ backgroundColor:color,pointRadius:5.5,pointHoverRadius:7.5},
+ {label:'Perfect prediction',data:[{x:mn,y:mn},{x:mx,y:mx}],
+ type:'line',borderColor:'rgba(249,115,22,.7)',borderDash:[5,4],
+ borderWidth:1.5,pointRadius:0,fill:false}
+ ]},options:{responsive:true,maintainAspectRatio:false,
+ plugins:{legend:{display:true,labels:{color:'#a8a69f',boxWidth:14,font:{size:11}}},
+ tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8,
+ callbacks:{label:ctx=>`${xTitle}: ${ctx.raw.x.toFixed(3)} ${yTitle}: ${ctx.raw.y.toFixed(3)}`}}},
+ scales:{
+ x:{title:{display:true,text:xTitle,color:'#a8a69f'},min:mn,max:mx,
+ grid:{color:'#2a2925'},ticks:{color:'#a8a69f'}},
+ y:{title:{display:true,text:yTitle,color:'#a8a69f'},min:mn,max:mx,
+ grid:{color:'#2a2925'},ticks:{color:'#a8a69f'}}
+ }}});
+ };
+
+ makeScatter('chart-holdout-bars', h.pairs, 'ph_true', 'ph_pred', 'rgba(37,99,168,.75)', 'True pH', 'Predicted pH', 0.35);
+ const pairLabels = h.pairs.map((p, idx) => `${idx + 1}`);
+ mkChart('chart-holdout-scatter',{
+ type:'bar',
+ data:{labels:pairLabels,datasets:[
+ {label:'Model |error|',data:h.pairs.map((p)=>+p.ph_err.toFixed(3)),
+ backgroundColor:'rgba(37,99,168,.75)',borderRadius:3},
+ {label:'Naive |error|',data:h.pairs.map((p)=>+Math.abs(p.ph_naive - p.ph_true).toFixed(3)),
+ backgroundColor:'rgba(107,104,96,.35)',borderColor:'rgba(107,104,96,.8)',borderWidth:1.2,borderRadius:3}
+ ]},
+ options:{responsive:true,maintainAspectRatio:false,
+ plugins:{legend:{display:true,labels:{color:'#a8a69f',boxWidth:14,font:{size:11}}},
+ tooltip:{backgroundColor:'#1e2533',titleColor:'#e8e6e0',bodyColor:'#a8a69f',padding:8,
+ callbacks:{
+ title:(items)=>{
+ const i=items[0].dataIndex, p=h.pairs[i];
+ return `Pair ${i + 1}: ${p.t0} → ${p.t1} (${p.gap.toFixed(1)}h)`;
+ },
+ label:(ctx)=>`${ctx.dataset.label}: ${(+ctx.raw).toFixed(3)}`
+ }}},
+ scales:{
+ x:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},title:{display:true,text:'Holdout pair',color:'#a8a69f'}},
+ y:{grid:{color:'#2a2925'},ticks:{color:'#a8a69f'},title:{display:true,text:'Absolute error (pH)',color:'#a8a69f'}}
+ }}
+ });
+}
+
+</script>
+</body>
+</html>
+
+
