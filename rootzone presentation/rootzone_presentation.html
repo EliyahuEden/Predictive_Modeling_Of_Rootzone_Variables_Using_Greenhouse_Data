@@ -510,6 +510,11 @@
  </tr></thead><tbody id="holdout-detail-body"></tbody></table>
  </div>
 
+ <div class="card mb">
+   <div class="card-title" id="holdout-hourly-title">pH — average model error by gap length (holdout pairs)</div>
+   <div class="chart-wrap h340"><canvas id="chart-holdout-hourly"></canvas></div>
+ </div>
+
  <!-- POST-FERT SECTION -->
  <div style="border-top:2px solid var(--border);margin:2.5rem 0 1.5rem;padding-top:1.5rem">
    <h3 style="font-size:1.1rem;font-weight:normal;margin-bottom:0.3rem" id="pf-title">Post-fertigation anchor variant</h3>
@@ -531,6 +536,11 @@
  <div class="card mb">
    <div class="card-title">pH — model error by pair: post-fert anchors vs naive</div>
    <div class="chart-wrap h480"><canvas id="chart-pf-bars"></canvas></div>
+ </div>
+
+ <div class="card mb">
+   <div class="card-title">pH — average model error by gap length (post-fert anchors)</div>
+   <div class="chart-wrap h340"><canvas id="chart-pf-hourly"></canvas></div>
  </div>
 
  <div class="card mb">
@@ -1185,6 +1195,43 @@ function buildSkipChart() {
 }
 
 // HOLDOUT CHARTS
+
+function buildHourlyError(canvasId, pairs, titleId, label, color, maxH) {
+ maxH = maxH || 50;
+ const bucketSize = 5;
+ const nBuckets = Math.ceil(maxH / bucketSize);
+ const buckets = Array.from({length: nBuckets}, () => ({errs:[], naive:[]}));
+ pairs.forEach(p => {
+   const bi = Math.min(Math.floor(p.gap / bucketSize), nBuckets - 1);
+   buckets[bi].errs.push(p.ph_err);
+   buckets[bi].naive.push(p.naive_err);
+ });
+ const labels = buckets.map((_, i) => `${i*bucketSize}–${(i+1)*bucketSize}h`);
+ const modelMAE = buckets.map(b => b.errs.length ? +(b.errs.reduce((a,v)=>a+v,0)/b.errs.length).toFixed(3) : null);
+ const naiveMAE = buckets.map(b => b.naive.length ? +(b.naive.reduce((a,v)=>a+v,0)/b.naive.length).toFixed(3) : null);
+ const hasData   = buckets.map(b => b.errs.length > 0);
+ const counts   = buckets.map(b => b.errs.length);
+ mkChart(canvasId, {type:'bar',
+   data:{labels, datasets:[
+     {label:'Model MAE', data:modelMAE, backgroundColor:color, borderRadius:3, skipNull:true},
+     {label:'Naive MAE', data:naiveMAE,
+      backgroundColor:'rgba(107,104,96,.35)', borderColor:'rgba(107,104,96,.8)', borderWidth:1.2, borderRadius:3}
+   ]},
+   options:{responsive:true, maintainAspectRatio:false,
+     plugins:{
+       legend:{display:true, labels:{color:'#a8a69f', boxWidth:12, font:{size:10}}},
+       tooltip:{backgroundColor:'#1e2533', titleColor:'#e8e6e0', bodyColor:'#a8a69f', padding:8,
+         callbacks:{
+           title: items => { const i=items[0].dataIndex; return labels[i] + '  (n=' + counts[i] + (counts[i]===0 ? ', no data)' : ')'); },
+           label: ctx => `${ctx.dataset.label}: ${ctx.raw !== null ? ctx.raw.toFixed(3) : 'no data'}`
+         }}},
+     scales:{
+       x:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true,text:'Gap length',color:'#a8a69f',font:{size:10}}},
+       y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true,text:'Mean Absolute Error (pH)',color:'#a8a69f',font:{size:10}},
+          beginAtZero:true}
+     }}});
+}
+
 function buildHoldout() {
  const h = RAW.holdout;
  if (!h || !h.pairs) return;
@@ -1258,6 +1305,7 @@ function buildHoldout() {
        y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true,text:'Absolute error (pH)',color:'#a8a69f'}}
      }}});
 
+ buildHourlyError('chart-holdout-hourly', h.pairs, 'holdout-hourly-title', 'Pre-fert', 'rgba(37,99,168,.75)', RAW.holdout.max_gap || Math.ceil(Math.max(...h.pairs.map(p=>p.gap))/5)*5);
  buildPostFert();}
 function buildPostFert() {
  const pf = RAW.holdout_postfert;
@@ -1318,7 +1366,8 @@ function buildPostFert() {
        x:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f', font:{size:9}}, title:{display:true,text:'Holdout pair',color:'#a8a69f'}},
        y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true,text:'Absolute error (pH)',color:'#a8a69f'}}
      }}});
-}
+
+ buildHourlyError('chart-pf-hourly', pf.pairs, null, 'Post-fert', 'rgba(13,122,95,.75)', RAW.holdout_postfert.max_gap || Math.ceil(Math.max(...pf.pairs.map(p=>p.gap))/5)*5);}
 
 
 </script>
