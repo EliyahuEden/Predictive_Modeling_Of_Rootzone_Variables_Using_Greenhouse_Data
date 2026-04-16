@@ -487,6 +487,11 @@
  </div>
 
  <div class="card mb">
+ <div class="card-title">pH — actual vs predicted over time (holdout pairs, chronological)</div>
+ <div class="chart-wrap h400"><canvas id="chart-holdout-timeseries"></canvas></div>
+ </div>
+
+ <div class="card mb">
  <div class="card-title">pH - predicted vs actual</div>
  <div class="chart-wrap h520"><canvas id="chart-holdout-bars"></canvas></div>
  </div>
@@ -1198,6 +1203,69 @@ function buildHourlyError(canvasId, pairs, titleId, label, color, maxH) {
      }}});
 }
 
+function buildHoldoutTimeSeries() {
+ const h = RAW.holdout;
+ if (!h || !h.pairs) return;
+
+ const PH_LINE = '#2563a8';
+ const ACTUAL  = '#111111';
+ const ERROR   = '#dc2626';
+
+ const pairs = h.pairs.slice().sort((a, b) =>
+   (a.t0 + a.t1 + String(a.gap)) < (b.t0 + b.t1 + String(b.gap)) ? -1 : 1
+ );
+ const labels = pairs.map(p => p.t0.slice(5) + '→' + p.t1.slice(5));
+
+ const connPlugin = {
+   id: 'ho-ts-conn',
+   afterDatasetsDraw(chart) {
+     const am = chart.getDatasetMeta(0), pm = chart.getDatasetMeta(1);
+     if (!am || !pm) return;
+     const ctx = chart.ctx;
+     ctx.save(); ctx.strokeStyle = ERROR; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.9;
+     for (let i = 0; i < Math.min(am.data.length, pm.data.length); i++) {
+       const a = am.data[i], p = pm.data[i];
+       if (!a || !p) continue;
+       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+     }
+     ctx.restore();
+   }
+ };
+
+ mkChart('chart-holdout-timeseries', {
+   type: 'line',
+   data: {
+     labels,
+     datasets: [
+       {label:'Actual', data:pairs.map(p=>p.ph_true), type:'line',
+        borderColor:ACTUAL, borderWidth:1.5, borderDash:[2,5],
+        pointRadius:5, pointBackgroundColor:ACTUAL, pointBorderColor:ACTUAL,
+        tension:0, fill:false},
+       {label:'Predicted', data:pairs.map(p=>p.ph_pred), type:'line',
+        borderColor:PH_LINE, borderWidth:1.5, borderDash:[2,5],
+        pointRadius:5, pointBackgroundColor:PH_LINE, pointBorderColor:PH_LINE,
+        tension:0, fill:false},
+     ]
+   },
+   options: {
+     responsive:true, maintainAspectRatio:false,
+     plugins:{
+       legend:{display:true, labels:{color:'#a8a69f', boxWidth:14, font:{size:11}}},
+       tooltip:{backgroundColor:'#1e2533', titleColor:'#e8e6e0', bodyColor:'#a8a69f', padding:8,
+         callbacks:{
+           title: items => { const p=pairs[items[0].dataIndex]; return `${p.t0} → ${p.t1} (${p.gap.toFixed(1)}h)`; },
+           label: ctx => `${ctx.dataset.label}: ${(+ctx.raw).toFixed(3)}`
+         }}
+     },
+     scales:{
+       x:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f', maxRotation:45, font:{size:8}, maxTicksLimit:20}},
+       y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true, text:'pH', color:'#a8a69f', font:{size:11}}}
+     }
+   },
+   plugins: [connPlugin]
+ });
+}
+
 function buildHoldout() {
  const h = RAW.holdout;
  if (!h || !h.pairs) return;
@@ -1271,7 +1339,9 @@ function buildHoldout() {
        y:{grid:{color:'#2a2925'}, ticks:{color:'#a8a69f'}, title:{display:true,text:'Absolute error (pH)',color:'#a8a69f'}}
      }}});
 
- buildHourlyError('chart-holdout-hourly', h.pairs, 'holdout-hourly-title', 'Pre-fert', 'rgba(37,99,168,.75)', RAW.holdout.max_gap || Math.ceil(Math.max(...h.pairs.map(p=>p.gap))/5)*5);}
+ buildHourlyError('chart-holdout-hourly', h.pairs, 'holdout-hourly-title', 'Pre-fert', 'rgba(37,99,168,.75)', RAW.holdout.max_gap || Math.ceil(Math.max(...h.pairs.map(p=>p.gap))/5)*5);
+ buildHoldoutTimeSeries();
+}
 
 
 </script>
