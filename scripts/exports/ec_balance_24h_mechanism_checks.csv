@@ -1,0 +1,9 @@
+rule,feature,target,expected_sign,observed_r,matches_expected
+salt load / fertigation concentration,g_salt_intensity,ec_delta,+,0.4600409943274698,True
+absolute salt rate,g_salt_per_h,ec_delta,+,0.4044668255405987,True
+salt trend is rising,n24_salt_minus_p24_salt,ec_delta,+,0.4806693917462451,True
+high EC plus irrigation washout,ec0_x_g_irr,ec_delta,-,-0.1988598886607842,True
+dilution/leaching pressure,dilution_pressure,ec_delta,-,-0.2116761142981189,True
+prior salt carry-over at high EC,ec0_x_p48_salt,ec_true,+,0.721279045950989,True
+high temp + low RH concentration pressure,temp_rh_balance,ec_delta,+,0.12827149417688294,True
+soil hotter/cooler than air balance,g_soil_minus_air,ec_delta,-,-0.39610707759270786,True

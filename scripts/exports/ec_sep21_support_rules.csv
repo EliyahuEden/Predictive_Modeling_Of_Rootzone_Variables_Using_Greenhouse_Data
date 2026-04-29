@@ -1,0 +1,5 @@
+support_rule,n_rows_before_sep21,max_ec_delta_before_sep21,max_ec1_before_sep21,mean_ec_delta_before_sep21
+"strict_sep21_like: gap<=2h, ec0<0.8, salt>=700, no post-salt irrigation",0,,,
+"high_salt_short: gap<=2h, salt>=700",0,,,
+"low_ec_high_salt_any_gap: ec0<0.8, salt>=700",12,0.534,0.709,0.318
+"similar_concentration_short: gap<=2h, salt_conc>=3",3,0.01200000000000001,0.98,-0.12426666666666668

@@ -1,0 +1,2 @@
+logger_rows,logger_start,logger_end,ec_label_rows,ec_label_rows_with_logger_nearest5min,vwc_label_rows_with_logger_nearest5min,corr_ec_vwc_at_label,corr_ec_res3_at_label,corr_ec_logger_soil_temp_at_label
+4306,2025-08-10 12:30:00,2025-09-19 18:10:00,109,55,55,0.053412893834359106,0.06950885068757869,0.4959568090147658

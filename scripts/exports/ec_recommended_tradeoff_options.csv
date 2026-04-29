@@ -1,0 +1,6 @@
+option,what_changed,mae,rmse,r2,aug_mae,sep21_pred,sep21_err,n,note
+main_real_only_warmup30,none; current clean model,0.1821590037879184,0.4703542517663208,0.8401131963953181,0.2386804593312967,0.6798783732118225,3.5501216267881777,78,best apples-to-apples real-only baseline
+real_only_warmup40,increase EC warmup from 30 to 40,0.1537582651169514,0.4560922639742377,0.8490292142585119,0.1159269514504219,0.6217819028948134,3.608218097105187,68,"best MAE, but evaluates fewer rows and excludes early hard August intervals"
+conservative_soft_shock_prior,spike features + soft_n48_w0.3 synthetic prior,0.2048046156499932,0.4602954819117805,0.8468785982939666,0.3316416268891022,1.0660872685010798,3.163912731498921,78,small-to-medium Sept21 lift with modest MAE penalty; still worse than clean model
+strong_shock_prior,spike features + high_n48_w0.6 synthetic prior,0.2141420545476801,0.4109359299242737,0.8779576104596127,0.4416642789872463,2.998630761239363,1.2313692387606374,78,largest Sept21 reduction from this grid; August becomes worse
+full_synthetic_shock_prior_best_sep21,synth96_w2_ec3to48,0.2214138577939132,0.3957218616446986,0.886827070185663,,3.4542293101101493,0.7757706898898511,78,"best Sept21 seen so far, but synthetic-prior model; not best MAE"
