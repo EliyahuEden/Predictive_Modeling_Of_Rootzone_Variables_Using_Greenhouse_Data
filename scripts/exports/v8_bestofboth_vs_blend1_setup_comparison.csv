@@ -1,0 +1,16 @@
+Aspect,Blend1,BestOfBoth
+Feature count,35,36
+Only added/changed shared feature,none,t1_morning_short
+Feature removed relative to BestOfBoth,t1_morning_short absent,none
+Huber blend,1.0,0.99
+Huber gate max gap,10.0,10.0
+Huber params,"{'alpha': 0.001, 'epsilon': 3.0, 'max_iter': 10000, 'tol': 1e-05}","{'alpha': 0.001, 'epsilon': 3.0, 'max_iter': 10000, 'tol': 1e-05}"
+Base XGB sample weights,False,True
+XGB n_estimators,650,950
+XGB learning_rate,0.07,0.035
+XGB max_depth,4,4
+XGB min_child_weight,3,2
+XGB subsample,0.6,0.75
+XGB colsample_bytree,0.5,0.7
+XGB reg_alpha,3.0,1.0
+XGB reg_lambda,1.0,2.0
