@@ -1,5 +1,5 @@
 {
-  "saved_at": "2026-05-11T14:18:11.140616",
+  "saved_at": "2026-05-11T23:04:19.103978",
   "feature_cols": [
     "ph0",
     "ec0",
@@ -26,7 +26,9 @@
     "salt_conc_t0_t1",
     "irr_to_et0",
     "temp_trend",
-    "prev_ec_slope",
+    "pre_salt_irr_ratio_6h",
+    "pre_salt_irr_ratio_24h",
+    "pre_anchor_salt_buildup",
     "irr_total_t0_t1",
     "hour_cos_b",
     "hour_sin_b",
@@ -43,5 +45,5 @@
   "ROBUST_LINEAR_BLEND_EC": 1.0,
   "ROBUST_LINEAR_GATE_MAX_GAP_H": 12.0,
   "SHARED_SCALE_TARGETS": false,
-  "n_train": 246
+  "n_train": 261
 }
