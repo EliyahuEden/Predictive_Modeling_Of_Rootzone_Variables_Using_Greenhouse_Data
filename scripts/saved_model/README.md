@@ -99,6 +99,8 @@ The CSV must contain:
 
 Leave `ALLOW_MISSING_INPUT_COLUMNS = False` for normal use. This makes the notebook stop if a required column is missing.
 
+The notebook also checks that `internal_radiation` has valid values in the 6 hours before the target time. This is needed for the `hist_dark_recent_6h` feature, and prevents missing radiation values from being treated as darkness.
+
 ## Timing requirements
 
 The model was trained for predictions up to 48 hours after a known pH/EC measurement.
