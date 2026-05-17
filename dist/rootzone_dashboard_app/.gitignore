@@ -1,0 +1,4 @@
+app_runs/
+__pycache__/
+_etl_test/
+.venv/

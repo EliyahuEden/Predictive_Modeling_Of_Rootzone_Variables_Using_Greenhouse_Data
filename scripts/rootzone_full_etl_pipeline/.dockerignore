@@ -1,0 +1,8 @@
+.venv/
+app_runs/
+__pycache__/
+*.pyc
+_etl_test/
+etl_*.csv
+master.csv
+full_etl_rootzone_pipeline.ipynb

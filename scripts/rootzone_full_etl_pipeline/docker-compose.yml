@@ -1,0 +1,10 @@
+services:
+  rootzone-dashboard:
+    build: .
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./app_runs:/app/app_runs
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8765

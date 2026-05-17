@@ -1,0 +1,1157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rootzone Soft Sensor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172026;
+      --soft-ink: #3f4e57;
+      --muted: #6d7a83;
+      --line: #d8e1e7;
+      --line-strong: #b8c7d1;
+      --page: #eef3f5;
+      --panel: #ffffff;
+      --accent: #0f766e;
+      --accent-dark: #0a5d58;
+      --blue: #2563eb;
+      --amber: #b86b00;
+      --red: #b42318;
+      --green: #087443;
+      --shadow: 0 12px 30px rgba(23, 32, 38, .08);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+    }
+    .topbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topbar-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 10px;
+      color: var(--soft-ink);
+      background: #f8fbfc;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+    .dashboard {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 22px 24px 34px;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 20px;
+    }
+    .rail {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      position: sticky;
+      top: 88px;
+      height: fit-content;
+    }
+    .side-panel, .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .side-panel {
+      padding: 16px;
+    }
+    .side-title {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 750;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .steps {
+      display: grid;
+      gap: 10px;
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .step-dot {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fff;
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+    }
+    .step.active .step-dot {
+      border-color: var(--accent);
+      background: #e7f6f3;
+      color: var(--accent);
+    }
+    .step.done .step-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .step strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .summary-list {
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 9px;
+    }
+    .summary-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .summary-row span {
+      color: var(--muted);
+    }
+    .summary-row strong {
+      text-align: right;
+      color: var(--ink);
+      font-weight: 750;
+    }
+    .content {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+    .panel {
+      padding: 18px;
+    }
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 16px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }
+    .panel-title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 620px;
+    }
+    .status {
+      min-height: 22px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .status.good { color: var(--green); }
+    .status.bad { color: var(--red); }
+    .status.warn { color: var(--amber); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--soft-ink);
+      font-weight: 650;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+      color: var(--ink);
+      background: #fff;
+      min-height: 40px;
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+    }
+    input[type="file"] {
+      padding: 8px;
+      border-style: dashed;
+      background: #f8fbfc;
+    }
+    button, .button-link {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      padding: 9px 13px;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    button:hover, .button-link:hover {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+    button:active, .button-link:active {
+      transform: translateY(1px);
+    }
+    button.secondary, .button-link.secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+    button.secondary:hover, .button-link.secondary:hover {
+      background: #e7f6f3;
+    }
+    button.ghost {
+      border-color: var(--line-strong);
+      background: #fff;
+      color: var(--soft-ink);
+    }
+    button.ghost:hover {
+      background: #f5f8fa;
+      border-color: var(--line-strong);
+    }
+    button.danger {
+      border-color: #f3c8c3;
+      background: #fff;
+      color: var(--red);
+      min-height: 34px;
+      padding: 6px 10px;
+    }
+    button.danger:hover {
+      background: #fff4f2;
+      border-color: #e6a7a0;
+    }
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fbfc;
+      min-height: 82px;
+    }
+    .kpi span {
+      color: var(--muted);
+      font-size: 12px;
+      display: block;
+      font-weight: 650;
+    }
+    .kpi strong {
+      font-size: 23px;
+      letter-spacing: 0;
+      display: block;
+      margin-top: 7px;
+      color: var(--ink);
+    }
+    .kpi.blue { border-left: 4px solid var(--blue); }
+    .kpi.green { border-left: 4px solid var(--accent); }
+    .kpi.amber { border-left: 4px solid var(--amber); }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+      gap: 18px;
+    }
+    .field-block {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .block-heading {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: -2px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 14px;
+    }
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 9px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 750;
+      background: #f8fbfc;
+    }
+    tr:last-child td { border-bottom: 0; }
+    tr.invalid td { background: #fff4f2; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: #edf6f4;
+      color: var(--accent);
+      font-weight: 750;
+      font-size: 12px;
+    }
+    .tag.warn {
+      background: #fff4df;
+      color: var(--amber);
+    }
+    .tag.bad {
+      background: #fff0ee;
+      color: var(--red);
+    }
+    .downloads {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) repeat(2, minmax(150px, .7fr));
+      gap: 12px;
+    }
+    .result-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #f8fbfc;
+      min-height: 112px;
+    }
+    .result-card.primary {
+      background: #eaf7f4;
+      border-color: #bde0d8;
+    }
+    .result-card span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      text-transform: uppercase;
+    }
+    .result-card strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 34px;
+      line-height: 1;
+    }
+    .result-card small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    .hidden { display: none !important; }
+    .mono { font-family: Consolas, monospace; }
+    @media (max-width: 1020px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      .rail {
+        position: static;
+      }
+      .steps {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .split {
+        grid-template-columns: 1fr;
+      }
+      .result-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 760px) {
+      .topbar {
+        padding: 12px 14px;
+      }
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .dashboard {
+        padding: 14px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      .span-2, .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 {
+        grid-column: span 1;
+      }
+      .steps, .kpi-grid, .result-grid {
+        grid-template-columns: 1fr;
+      }
+      .panel {
+        padding: 15px;
+      }
+      .panel-title {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">RZ</div>
+        <div>
+          <h1>Rootzone Soft Sensor</h1>
+          <p>Operational pH and EC forecast dashboard</p>
+        </div>
+      </div>
+      <div class="pill" id="backendPill">Model backend ready</div>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <aside class="rail">
+      <section class="side-panel">
+        <div class="side-title">Workflow</div>
+        <div class="steps">
+          <div class="step active" id="stepWeather"><div class="step-dot">1</div><div><strong>Weather</strong><span>Upload files</span></div></div>
+          <div class="step" id="stepForecast"><div class="step-dot">2</div><div><strong>Forecast</strong><span>Micro-climate</span></div></div>
+          <div class="step" id="stepInputs"><div class="step-dot">3</div><div><strong>Rootzone</strong><span>Status and events</span></div></div>
+          <div class="step" id="stepResult"><div class="step-dot">4</div><div><strong>Result</strong><span>pH and EC</span></div></div>
+        </div>
+      </section>
+
+      <section class="side-panel">
+        <div class="side-title">Run Summary</div>
+        <div class="summary-list">
+          <div class="summary-row"><span>Run</span><strong id="summaryRun">Not started</strong></div>
+          <div class="summary-row"><span>Forecast rows</span><strong id="summaryRows">-</strong></div>
+          <div class="summary-row"><span>Range</span><strong id="summaryRange">-</strong></div>
+          <div class="summary-row"><span>Events</span><strong id="summaryEvents">0</strong></div>
+          <div class="summary-row"><span>Target</span><strong id="summaryTarget">-</strong></div>
+        </div>
+      </section>
+    </aside>
+
+    <div class="content">
+      <section class="panel">
+        <div class="panel-title">
+          <div>
+            <h2>Weather Inputs</h2>
+            <p>Upload the external weather and radiation files used to generate the greenhouse micro-climate forecast.</p>
+          </div>
+          <div id="forecastStatus" class="status">Ready</div>
+        </div>
+        <form id="forecastForm" class="grid">
+          <label class="span-6">Bet Dagan weather CSV
+            <input name="weather_file" type="file" accept=".csv" required>
+          </label>
+          <label class="span-6">Bet Dagan radiation CSV
+            <input name="radiation_file" type="file" accept=".csv" required>
+          </label>
+          <label class="span-3">Start time
+            <input name="start_time" type="datetime-local">
+          </label>
+          <label class="span-3">End time
+            <input name="end_time" type="datetime-local">
+          </label>
+          <label class="span-3">Planting date
+            <input name="planting_date" type="date">
+          </label>
+          <label class="span-3">Canopy cover
+            <input name="canopy_cover_default" type="number" min="0" max="1" step="0.001" value="0">
+          </label>
+          <div class="span-12 actions">
+            <button type="submit" id="runForecast">Create weather prediction</button>
+            <span id="runId" class="status mono"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel hidden" id="forecastPanel">
+        <div class="panel-title">
+          <div>
+            <h2>Micro-Climate Forecast</h2>
+            <p>Generated model inputs are ready for rootzone prediction.</p>
+          </div>
+          <div id="forecastRange" class="status good"></div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi green"><span>Forecast rows</span><strong id="rowsMetric">-</strong></div>
+          <div class="kpi blue"><span>Start</span><strong id="startMetric">-</strong></div>
+          <div class="kpi blue"><span>End</span><strong id="endMetric">-</strong></div>
+          <div class="kpi amber"><span>Target window</span><strong id="windowMetric">48h</strong></div>
+        </div>
+        <div class="downloads">
+          <a id="forecastDownload" class="button-link" href="#">Download weather prediction</a>
+          <a id="masterDownload" class="button-link secondary" href="#">Download generated master</a>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="rootzonePanel">
+        <div class="panel-title">
+          <div>
+            <h2>Rootzone Inputs</h2>
+            <p>Enter the current measured pH/EC status and all irrigation and fertilizer events that occurred in the <strong>48 h before the anchor time</strong>. The weather data must also cover at least <strong>6 h before the anchor time</strong>.</p>
+          </div>
+          <div id="eventStatus" class="status">No events added</div>
+        </div>
+
+        <div class="split">
+          <div class="field-block">
+            <div class="block-heading">Current Status</div>
+            <div class="grid">
+              <label class="span-4">Measurement time
+                <input id="anchorTime" type="datetime-local" required>
+              </label>
+              <label class="span-2">Current pH
+                <input id="anchorPh" type="number" step="0.001" required>
+              </label>
+              <label class="span-2">Current EC
+                <input id="anchorEc" type="number" step="0.0001" required>
+              </label>
+              <label class="span-4">Prediction time
+                <input id="targetTime" type="datetime-local" required>
+              </label>
+              <label class="span-3">DAP override
+                <input id="dapOverride" type="number" step="1">
+              </label>
+            </div>
+          </div>
+
+          <div class="field-block">
+            <div class="block-heading">Add Event</div>
+            <label>Event time
+              <input id="eventTime" type="datetime-local">
+            </label>
+            <div class="grid">
+              <label class="span-6">Irrigation ml
+                <input id="irrigationMl" type="number" min="0" step="1" value="0">
+              </label>
+              <label class="span-6">Fertilizer
+                <select id="fertType">
+                  <option value="none">None</option>
+                  <option value="A">Type A</option>
+                  <option value="B">Type B</option>
+                </select>
+              </label>
+              <label class="span-4">Dose x
+                <input id="doseMultiplier" type="number" min="0" step="0.1" value="1">
+              </label>
+              <label class="span-4">Gypsum
+                <input id="gypsumMg" type="number" min="0" step="1" value="0">
+              </label>
+              <label class="span-4">Kortin
+                <input id="kortinMg" type="number" min="0" step="1" value="0">
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" class="ghost" data-dose="1">Normal</button>
+              <button type="button" class="ghost" data-dose="2">Double</button>
+              <button type="button" id="addEvent">Add event</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="eventsTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Irrigation</th>
+                <th>Fert</th>
+                <th>Dose</th>
+                <th>Gypsum</th>
+                <th>Kortin</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="actions" style="margin-top:16px">
+          <div id="requirementsBanner"></div>
+          <button type="button" id="predictButton">Run rootzone prediction</button>
+          <div id="predictStatus" class="status"></div>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="resultPanel">
+        <div class="panel-title">
+          <div>
+            <h2>Prediction Result</h2>
+            <p>Final pH and EC forecast from the saved rootzone model.</p>
+          </div>
+          <div id="resultStatus" class="status good">Complete</div>
+        </div>
+        <div class="result-grid">
+          <div class="result-card primary"><span>Predicted pH</span><strong id="predPh">-</strong><small>rootzone pH</small></div>
+          <div class="result-card primary"><span>Predicted EC</span><strong id="predEc">-</strong><small>mS/cm</small></div>
+          <div class="result-card"><span>Gap hours</span><strong id="gapHours">-</strong><small>anchor to target</small></div>
+          <div class="result-card"><span>Model</span><strong id="component">-</strong><small>component used</small></div>
+        </div>
+        <div class="downloads">
+          <a id="predictionDownload" class="button-link" href="#">Download prediction</a>
+          <a id="appliedMasterDownload" class="button-link secondary" href="#">Download applied master</a>
+          <a id="eventsDownload" class="button-link secondary" href="#">Download event log</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="config.js"></script>
+  <script>
+    const API_BASE = (window.ROOTZONE_API_BASE_URL || '').replace(/\/$/, '');
+    const state = {
+      runId: null,
+      events: [],
+      downloads: {},
+      timestampMin: null,   // ISO string – start of weather data
+      timestampMax: null,   // ISO string – end of weather data
+      forecastRows: 0,
+      // validation constants – fetched from backend on load
+      MIN_CLIMATE_H: 6,
+      EVENT_WINDOW_H: 48,
+    };
+    const $ = (id) => document.getElementById(id);
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function apiUrl(path) {
+      if (!path) return '#';
+      if (/^https?:\/\//i.test(path)) return path;
+      return `${API_BASE}${path}`;
+    }
+
+    function setStatus(id, text, kind = '') {
+      const el = $(id);
+      el.textContent = text;
+      el.className = 'status ' + kind;
+    }
+
+    function setStep(id, mode) {
+      const el = $(id);
+      el.classList.remove('active', 'done');
+      if (mode) el.classList.add(mode);
+    }
+
+    function toInputTime(value) {
+      return value ? value.slice(0, 16) : '';
+    }
+
+    function prettyTime(value) {
+      return value ? value.replace('T', ' ') : '-';
+    }
+
+    function shiftInputHours(value, hours) {
+      const date = new Date(value + ':00');
+      if (Number.isNaN(date.getTime())) return toInputTime(value);
+      date.setTime(date.getTime() + hours * 3600000);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function asDate(value) {
+      if (!value) return null;
+      const d = new Date(value + (value.includes(':') && value.length === 16 ? ':00' : ''));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function diffHours(a, b) {
+      // Returns (b - a) in hours
+      return (asDate(b) - asDate(a)) / 3600000;
+    }
+
+    // ── Per-event validation ──────────────────────────────────────────────────
+    function eventValidation(event) {
+      const eventDate  = asDate(event.time);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+      const anchorDate = asDate($('anchorTime').value);
+      const targetDate = asDate($('targetTime').value);
+
+      if (!eventDate) return { kind: 'bad', text: 'Bad time' };
+
+      // Outside the weather data entirely
+      if (minDate && eventDate < minDate)
+        return { kind: 'bad', text: 'Before weather data start' };
+      if (maxDate && eventDate > maxDate)
+        return { kind: 'bad', text: 'After weather data end' };
+
+      // After target – truly outside the prediction window
+      if (targetDate && eventDate > targetDate)
+        return { kind: 'bad', text: 'After target time' };
+
+      // More than EVENT_WINDOW_H before anchor – outside model feature window
+      if (anchorDate) {
+        const hoursBeforeAnchor = (anchorDate - eventDate) / 3600000;
+        if (hoursBeforeAnchor > state.EVENT_WINDOW_H)
+          return { kind: 'warn', text: `>${state.EVENT_WINDOW_H}h before anchor (no effect)` };
+      }
+
+      return { kind: 'good', text: 'Ready' };
+    }
+
+    function eventHasValue(event) {
+      return Number(event.irrigation_ml || 0) > 0 ||
+        event.fert_type !== 'none' ||
+        Number(event.gypsum_mg || 0) > 0 ||
+        Number(event.kortin_mg || 0) > 0;
+    }
+
+    // ── Pre-flight checks (returns array of {kind, text} issues) ─────────────
+    function preflightChecks() {
+      const issues = [];
+      const anchorVal  = $('anchorTime').value;
+      const targetVal  = $('targetTime').value;
+      const anchorDate = asDate(anchorVal);
+      const targetDate = asDate(targetVal);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+
+      if (!state.runId) {
+        issues.push({ kind: 'error', text: 'No forecast run — complete Step 1 first.' });
+        return issues;
+      }
+
+      // Anchor inside weather data
+      if (minDate && anchorDate && anchorDate < minDate)
+        issues.push({ kind: 'error', text: `Anchor time (${prettyTime(anchorVal)}) is before the weather data start (${prettyTime(state.timestampMin)}).` });
+
+      if (maxDate && anchorDate && anchorDate > maxDate)
+        issues.push({ kind: 'error', text: `Anchor time (${prettyTime(anchorVal)}) is after the weather data end (${prettyTime(state.timestampMax)}). Upload weather data that covers the anchor time.` });
+
+      // At least MIN_CLIMATE_H of climate before anchor
+      if (minDate && anchorDate) {
+        const leadH = (anchorDate - minDate) / 3600000;
+        if (leadH < state.MIN_CLIMATE_H)
+          issues.push({ kind: 'error', text: `Only ${leadH.toFixed(1)} h of climate data before anchor. The model needs at least ${state.MIN_CLIMATE_H} h — move anchor later or upload earlier weather data.` });
+      }
+
+      // Target after anchor
+      if (anchorDate && targetDate && targetDate <= anchorDate)
+        issues.push({ kind: 'error', text: 'Target time must be after the anchor time.' });
+
+      // Target inside weather data
+      if (maxDate && targetDate && targetDate > maxDate)
+        issues.push({ kind: 'error', text: `Target time (${prettyTime(targetVal)}) is after the weather data end (${prettyTime(state.timestampMax)}). The model cannot predict beyond available climate data.` });
+
+      // Required fields
+      if (!$('anchorPh').value)
+        issues.push({ kind: 'error', text: 'Current pH is required.' });
+      if (!$('anchorEc').value)
+        issues.push({ kind: 'error', text: 'Current EC is required.' });
+
+      // Bad events
+      const badCount = state.events.filter(ev => eventValidation(ev).kind === 'bad').length;
+      if (badCount)
+        issues.push({ kind: 'error', text: `${badCount} event row(s) have errors — fix them before predicting.` });
+
+      // Advisory: no events in the full window (anchor−48h → target)
+      if (issues.length === 0 && anchorDate) {
+        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
+        const windowEnd   = targetDate || anchorDate;
+        const windowEvents = state.events.filter(ev => {
+          const d = asDate(ev.time);
+          return d && d >= windowStart && d <= windowEnd;
+        });
+        if (windowEvents.length === 0)
+          issues.push({ kind: 'warn', text: `No irrigation or fertilizer events in the ${state.EVENT_WINDOW_H}-h window before anchor. If events occurred, add them for accurate predictions.` });
+      }
+
+      return issues;
+    }
+
+    // ── Requirements banner (live, updates on input change) ──────────────────
+    function updateRequirementsBanner() {
+      const banner = $('requirementsBanner');
+      if (!state.runId) { banner.innerHTML = ''; return; }
+
+      const anchorVal  = $('anchorTime').value;
+      const targetVal  = $('targetTime').value;
+      const anchorDate = asDate(anchorVal);
+      const targetDate = asDate(targetVal);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+
+      const rows = [];
+
+      // Climate coverage before anchor
+      if (minDate && anchorDate) {
+        const leadH = (anchorDate - minDate) / 3600000;
+        const ok = leadH >= state.MIN_CLIMATE_H;
+        rows.push({ ok, text: `Climate data before anchor: ${leadH.toFixed(1)} h (need ≥ ${state.MIN_CLIMATE_H} h)` });
+      } else {
+        rows.push({ ok: false, text: `Set anchor time to check climate coverage` });
+      }
+
+      // Target within weather data
+      if (maxDate && targetDate) {
+        const ok = targetDate <= maxDate;
+        rows.push({ ok, text: `Target within weather data: ${ok ? 'Yes' : `No — weather ends ${prettyTime(state.timestampMax)}`}` });
+      }
+
+      // Events in window
+      if (anchorDate) {
+        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
+        const windowEnd   = targetDate || anchorDate;
+        const count = state.events.filter(ev => {
+          const d = asDate(ev.time);
+          return d && d >= windowStart && d <= windowEnd && eventValidation(ev).kind !== 'bad';
+        }).length;
+        rows.push({
+          ok: count > 0,
+          warn: count === 0,
+          text: `Events in window (${state.EVENT_WINDOW_H}h before anchor → target): ${count} (add irrigation/fert events for better accuracy)`
+        });
+      }
+
+      banner.innerHTML = `
+        <div style="background:#f8fbfc;border:1px solid var(--line);border-radius:8px;padding:13px 16px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:9px;">Data Requirements Check</div>
+          <div style="display:grid;gap:6px;">
+            ${rows.map(r => `
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px;">
+                <span style="flex:0 0 18px;height:18px;border-radius:50%;background:${r.ok ? 'var(--green)' : (r.warn ? 'var(--amber)' : 'var(--red)')};display:grid;place-items:center;">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    ${r.ok
+                      ? '<path d="M2 5l2 2 4-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+                      : '<path d="M3 3l4 4M7 3l-4 4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>'}
+                  </svg>
+                </span>
+                <span style="color:${r.ok ? 'var(--ink)' : (r.warn ? 'var(--amber)' : 'var(--red)')}">${r.text}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // ── Summary sidebar ───────────────────────────────────────────────────────
+    function updateSummary() {
+      $('summaryRun').textContent = state.runId ? state.runId.split('_').slice(-1)[0] : 'Not started';
+      $('summaryRows').textContent = state.forecastRows ? Number(state.forecastRows).toLocaleString() : '-';
+      $('summaryRange').textContent = state.timestampMin && state.timestampMax
+        ? `${prettyTime(state.timestampMin)} → ${prettyTime(state.timestampMax)}`
+        : '-';
+      $('summaryEvents').textContent = String(state.events.length);
+      $('summaryTarget').textContent = $('targetTime').value ? prettyTime($('targetTime').value) : '-';
+      updateRequirementsBanner();
+    }
+
+    // ── Event table ───────────────────────────────────────────────────────────
+    function renderEvents() {
+      const body = $('eventsTable').querySelector('tbody');
+      body.innerHTML = '';
+      if (!state.events.length) {
+        const empty = document.createElement('tr');
+        empty.innerHTML = '<td colspan="8" style="color:var(--muted)">No operational events added. Add irrigation and fertilizer events that occurred in the 48 h before the anchor time.</td>';
+        body.appendChild(empty);
+      }
+      let badCount = 0;
+      let warnCount = 0;
+      state.events.forEach((event, index) => {
+        const validation = eventValidation(event);
+        if (validation.kind === 'bad') badCount += 1;
+        if (validation.kind === 'warn') warnCount += 1;
+        const row = document.createElement('tr');
+        if (validation.kind === 'bad') row.classList.add('invalid');
+        row.innerHTML = `
+          <td>${prettyTime(event.time)}</td>
+          <td>${Number(event.irrigation_ml || 0).toLocaleString()}</td>
+          <td>${event.fert_type}</td>
+          <td>${event.fert_type === 'none' ? '-' : event.multiplier}</td>
+          <td>${event.gypsum_mg}</td>
+          <td>${event.kortin_mg}</td>
+          <td><span class="tag ${validation.kind === 'bad' ? 'bad' : validation.kind === 'warn' ? 'warn' : ''}">${validation.text}</span></td>
+          <td><button type="button" class="danger" data-remove="${index}">Remove</button></td>
+        `;
+        body.appendChild(row);
+      });
+      if (badCount) {
+        setStatus('eventStatus', `${badCount} event row(s) need fixing`, 'bad');
+      } else if (warnCount) {
+        setStatus('eventStatus', `${warnCount} event(s) outside the ${state.EVENT_WINDOW_H}-h window (will have no effect)`, 'warn');
+      } else {
+        setStatus('eventStatus', state.events.length
+          ? `${state.events.length} event(s) ready`
+          : `No events added — add irrigation/fert events from the ${state.EVENT_WINDOW_H} h before anchor`, state.events.length ? 'good' : 'warn');
+      }
+      updateSummary();
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────────────
+    document.addEventListener('click', (event) => {
+      const dose = event.target.getAttribute('data-dose');
+      if (dose) $('doseMultiplier').value = dose;
+      const removeIndex = event.target.getAttribute('data-remove');
+      if (removeIndex !== null) {
+        state.events.splice(Number(removeIndex), 1);
+        renderEvents();
+      }
+    });
+
+    ['anchorTime', 'targetTime'].forEach(id => {
+      $(id).addEventListener('change', () => {
+        renderEvents();
+        updateSummary();
+      });
+    });
+
+    // ── Step 1: Forecast form ─────────────────────────────────────────────────
+    $('forecastForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setStatus('forecastStatus', 'Running forecast...');
+      $('runForecast').disabled = true;
+      try {
+        const response = await fetch(apiUrl('/api/forecast'), { method: 'POST', body: new FormData(event.target) });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Forecast failed');
+
+        state.runId          = data.run_id;
+        state.downloads      = data.downloads;
+        state.timestampMin   = data.timestamp_min;
+        state.timestampMax   = data.timestamp_max;
+        state.forecastRows   = data.forecast_rows;
+
+        $('runId').textContent = `Run ${data.run_id}`;
+        $('forecastPanel').classList.remove('hidden');
+        $('rootzonePanel').classList.remove('hidden');
+        $('forecastDownload').href = apiUrl(data.downloads.forecast);
+        $('masterDownload').href   = apiUrl(data.downloads.master);
+        $('forecastRange').textContent = `${Number(data.forecast_rows).toLocaleString()} rows`;
+        $('rowsMetric').textContent  = Number(data.forecast_rows).toLocaleString();
+        $('startMetric').textContent = prettyTime(data.timestamp_min);
+        $('endMetric').textContent   = prettyTime(data.timestamp_max);
+
+        // Smart defaults: anchor = ts_max − MIN_CLIMATE_H, target = ts_max
+        // Event default = anchor − 12h (middle of the 48h event window)
+        const anchorDefault = shiftInputHours(data.timestamp_max, -state.MIN_CLIMATE_H);
+        $('targetTime').value = toInputTime(data.timestamp_max);
+        $('anchorTime').value = anchorDefault;
+        $('eventTime').value  = shiftInputHours(anchorDefault, -12);
+
+        setStatus('forecastStatus', 'Forecast ready', 'good');
+        setStep('stepWeather', 'done');
+        setStep('stepForecast', 'done');
+        setStep('stepInputs', 'active');
+        updateSummary();
+        renderEvents();
+      } catch (err) {
+        setStatus('forecastStatus', err.message, 'bad');
+      } finally {
+        $('runForecast').disabled = false;
+      }
+    });
+
+    // ── Add event ─────────────────────────────────────────────────────────────
+    $('addEvent').addEventListener('click', () => {
+      const eventRow = {
+        time:          $('eventTime').value,
+        irrigation_ml: Number($('irrigationMl').value || 0),
+        fert_type:     $('fertType').value,
+        multiplier:    Number($('doseMultiplier').value || 1),
+        gypsum_mg:     Number($('gypsumMg').value || 0),
+        kortin_mg:     Number($('kortinMg').value || 0),
+      };
+
+      if (!eventRow.time) {
+        setStatus('eventStatus', 'Event time is required', 'bad');
+        return;
+      }
+      if (!eventHasValue(eventRow)) {
+        setStatus('eventStatus', 'Add irrigation, fertilizer, gypsum, or Kortin before saving the event', 'bad');
+        return;
+      }
+      const validation = eventValidation(eventRow);
+      if (validation.kind === 'bad') {
+        setStatus('eventStatus', validation.text, 'bad');
+        return;
+      }
+      state.events.push(eventRow);
+      renderEvents();
+      // Advance event time by +1h for quick entry of consecutive events
+      $('eventTime').value = shiftInputHours(eventRow.time, 1);
+      setStatus('eventStatus', 'Event added', 'good');
+    });
+
+    // ── Run prediction ────────────────────────────────────────────────────────
+    $('predictButton').addEventListener('click', async () => {
+      // Run pre-flight checks and show any issues
+      const issues = preflightChecks();
+      const errors = issues.filter(i => i.kind === 'error');
+
+      if (errors.length) {
+        // Render all errors in the status area
+        $('predictStatus').innerHTML = errors.map(e =>
+          `<div style="color:var(--red);font-size:13px;margin-bottom:4px;">⚠ ${e.text}</div>`
+        ).join('');
+        $('predictStatus').className = 'status bad';
+        renderEvents();
+        return;
+      }
+
+      setStatus('predictStatus', 'Running prediction...');
+      $('predictButton').disabled = true;
+      try {
+        const payload = {
+          run_id:             state.runId,
+          anchor_time:        $('anchorTime').value,
+          anchor_ph:          $('anchorPh').value,
+          anchor_ec:          $('anchorEc').value,
+          target_time:        $('targetTime').value,
+          days_after_planting: $('dapOverride').value,
+          events:             state.events,
+        };
+        const response = await fetch(apiUrl('/api/predict'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Prediction failed');
+
+        const pred = data.prediction;
+        $('resultPanel').classList.remove('hidden');
+        $('predPh').textContent        = Number(pred.predicted_ph).toFixed(3);
+        $('predEc').textContent        = Number(pred.predicted_ec_ms).toFixed(4);
+        $('gapHours').textContent      = Number(pred.gap_hours).toFixed(1);
+        $('component').textContent     = pred.model_component;
+        $('predictionDownload').href   = apiUrl(data.downloads.prediction);
+        $('appliedMasterDownload').href = apiUrl(data.downloads.applied_master);
+        $('eventsDownload').href       = apiUrl(data.downloads.events);
+
+        setStatus('predictStatus', 'Prediction ready', 'good');
+        setStep('stepInputs', 'done');
+        setStep('stepResult', 'done');
+      } catch (err) {
+        setStatus('predictStatus', err.message, 'bad');
+      } finally {
+        $('predictButton').disabled = false;
+      }
+    });
+
+    // ── Load validation constants from backend ────────────────────────────────
+    fetch(apiUrl('/api/presets')).then(r => r.json()).then(data => {
+      if (data.validation) {
+        state.MIN_CLIMATE_H  = data.validation.min_climate_before_anchor_h;
+        state.EVENT_WINDOW_H = data.validation.event_window_h;
+      }
+    }).catch(() => {/* use defaults */});
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    updateSummary();
+    renderEvents();
+  </script>
+</body>
+</html>

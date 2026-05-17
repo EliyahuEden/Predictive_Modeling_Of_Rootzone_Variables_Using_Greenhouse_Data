@@ -84,6 +84,18 @@ USER_EDITABLE_COLUMNS = [
     *SALT_FERTS,
 ]
 
+EVENT_COLUMNS = [
+    "irrigation_ml_current",
+    "fertilization_flag",
+    "fertilization_type_a_flag",
+    "fertilization_type_b_flag",
+    *ACID_FERTS,
+    *SALT_FERTS,
+]
+
+ANCHOR_COLUMNS = ["ph", "ec_ms"]
+CROP_COLUMNS = ["canopy_cover", "days_after_planting"]
+
 WEATHER_COLUMNS = [
     "station",
     "timestamp",
@@ -337,8 +349,21 @@ def engineer_micro_climate_features(
             f"Radiation file has a {radiation_gap:.1f}h timestamp gap, above the allowed {max_external_gap_hours:.1f}h"
         )
 
-    start = pd.Timestamp(start_time) if start_time is not None else max(weather["timestamp"].min(), radiation["timestamp"].min())
-    end = pd.Timestamp(end_time) if end_time is not None else min(weather["timestamp"].max(), radiation["timestamp"].max())
+    overlap_start = max(weather["timestamp"].min(), radiation["timestamp"].min())
+    overlap_end = min(weather["timestamp"].max(), radiation["timestamp"].max())
+    if overlap_start >= overlap_end:
+        raise ValueError(f"Weather and radiation files do not overlap in time: {overlap_start} -> {overlap_end}")
+
+    requested_start = pd.Timestamp(start_time) if start_time is not None else overlap_start
+    requested_end = pd.Timestamp(end_time) if end_time is not None else overlap_end
+    if requested_start > overlap_end or requested_end < overlap_start:
+        raise ValueError(
+            "Requested prediction range is outside the uploaded weather/radiation overlap. "
+            f"Available overlap is {overlap_start:%Y-%m-%d %H:%M} -> {overlap_end:%Y-%m-%d %H:%M}."
+        )
+
+    start = max(requested_start, overlap_start)
+    end = min(requested_end, overlap_end)
     start = start.ceil("10min")
     end = end.floor("10min")
     if start >= end:
@@ -445,10 +470,158 @@ def forecast_micro_climate(model_frame: pd.DataFrame, bundle: dict) -> pd.DataFr
     return out
 
 
+def _has_path(path_like: str | Path | None) -> bool:
+    return path_like is not None and str(path_like).strip() != ""
+
+
+def _read_time_keyed_manual_file(path_like: str | Path, *, label: str) -> tuple[pd.DataFrame, Path]:
+    path = resolve_path(path_like)
+    if not path.exists():
+        raise FileNotFoundError(f"{label} not found: {path}")
+
+    manual = read_csv(path)
+    if "timestamp" not in manual.columns:
+        raise ValueError(f"{label} must contain a timestamp column")
+
+    manual["timestamp"] = pd.to_datetime(manual["timestamp"], errors="coerce", format="mixed")
+    if manual["timestamp"].isna().any():
+        raise ValueError(f"{label} contains timestamps that could not be parsed")
+
+    manual = manual.sort_values("timestamp").drop_duplicates("timestamp", keep="last").set_index("timestamp")
+    return manual, path
+
+
+def _merge_manual_time_file(
+    master: pd.DataFrame,
+    *,
+    file_path: str | Path | None,
+    columns: list[str],
+    label: str,
+    blank_numeric_fill: float | None = None,
+    update_non_missing_only: bool = False,
+    warn_ignored_rows: bool = False,
+) -> pd.DataFrame:
+    if not _has_path(file_path):
+        return master
+
+    manual, path = _read_time_keyed_manual_file(file_path, label=label)
+    usable_cols = [col for col in columns if col in manual.columns]
+    if not usable_cols:
+        raise ValueError(f"{label} has no usable columns. Expected at least one of: {', '.join(columns)}")
+
+    indexed = master.set_index("timestamp")
+    common_index = indexed.index.intersection(manual.index)
+    if common_index.empty:
+        raise ValueError(f"{label} has no timestamps that match the generated master grid: {path}")
+
+    ignored = manual.index.difference(indexed.index)
+    if len(ignored) and warn_ignored_rows:
+        warnings.warn(
+            f"{label} contains {len(ignored)} timestamp rows outside the generated master range/grid; those rows were ignored.",
+            RuntimeWarning,
+        )
+
+    for col in usable_cols:
+        values = pd.to_numeric(manual.loc[common_index, col], errors="coerce")
+        if blank_numeric_fill is not None:
+            values = values.fillna(blank_numeric_fill)
+        if update_non_missing_only:
+            values = values[values.notna()]
+            if values.empty:
+                continue
+            indexed.loc[values.index, col] = values
+        else:
+            indexed.loc[common_index, col] = values
+
+    return indexed.reset_index()
+
+
+def _manual_template_window(
+    master: pd.DataFrame,
+    *,
+    target_time: str | pd.Timestamp | None = None,
+    anchor_time: str | pd.Timestamp | None = None,
+    required_history_hours: float = 48.0,
+    max_prediction_gap_hours: float = 48.0,
+) -> pd.DataFrame:
+    if master.empty:
+        return master.copy()
+
+    timestamps = pd.to_datetime(master["timestamp"])
+    start_ts = timestamps.min()
+    end_ts = timestamps.max()
+
+    if target_time is not None:
+        target_ts = pd.Timestamp(target_time)
+        end_ts = target_ts
+        if anchor_time is not None:
+            anchor_ts = pd.Timestamp(anchor_time)
+            start_ts = anchor_ts - pd.Timedelta(hours=required_history_hours)
+        else:
+            start_ts = target_ts - pd.Timedelta(hours=required_history_hours + max_prediction_gap_hours)
+    elif anchor_time is not None:
+        anchor_ts = pd.Timestamp(anchor_time)
+        start_ts = anchor_ts - pd.Timedelta(hours=required_history_hours)
+
+    window = master.loc[(timestamps >= start_ts) & (timestamps <= end_ts)].copy()
+    if window.empty:
+        return master.copy()
+    return window
+
+
+def write_manual_input_templates(
+    master: pd.DataFrame,
+    *,
+    output_events_template_file: str | Path | None = None,
+    output_anchors_template_file: str | Path | None = None,
+    output_crop_template_file: str | Path | None = None,
+    target_time: str | pd.Timestamp | None = None,
+    anchor_time: str | pd.Timestamp | None = None,
+    required_history_hours: float = 48.0,
+) -> dict[str, str]:
+    window = _manual_template_window(
+        master,
+        target_time=target_time,
+        anchor_time=anchor_time,
+        required_history_hours=required_history_hours,
+    )
+    paths: dict[str, str] = {}
+
+    if _has_path(output_events_template_file):
+        events_path = resolve_output_path(output_events_template_file)
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        window[["timestamp", *EVENT_COLUMNS]].to_csv(events_path, index=False)
+        paths["events"] = str(events_path)
+
+    if _has_path(output_anchors_template_file):
+        anchors_path = resolve_output_path(output_anchors_template_file)
+        anchors_path.parent.mkdir(parents=True, exist_ok=True)
+        if anchor_time is not None:
+            anchor_ts = pd.Timestamp(anchor_time)
+            anchors = master.loc[pd.to_datetime(master["timestamp"]) == anchor_ts, ["timestamp", *ANCHOR_COLUMNS]]
+            if anchors.empty:
+                anchors = window[["timestamp", *ANCHOR_COLUMNS]]
+        else:
+            anchors = window[["timestamp", *ANCHOR_COLUMNS]]
+        anchors.to_csv(anchors_path, index=False)
+        paths["anchors"] = str(anchors_path)
+
+    if _has_path(output_crop_template_file):
+        crop_path = resolve_output_path(output_crop_template_file)
+        crop_path.parent.mkdir(parents=True, exist_ok=True)
+        window[["timestamp", *CROP_COLUMNS]].to_csv(crop_path, index=False)
+        paths["crop"] = str(crop_path)
+
+    return paths
+
+
 def create_master_template(
     climate_predictions: pd.DataFrame,
     *,
     manual_master_file: str | Path | None = None,
+    events_file: str | Path | None = None,
+    anchors_file: str | Path | None = None,
+    crop_file: str | Path | None = None,
     planting_date: str | pd.Timestamp | None = None,
     canopy_cover_default: float = 0.0,
 ) -> pd.DataFrame:
@@ -476,23 +649,36 @@ def create_master_template(
     else:
         master["days_after_planting"] = 0
 
-    if manual_master_file is not None and str(manual_master_file).strip():
-        manual_path = resolve_path(manual_master_file)
-        if not manual_path.exists():
-            raise FileNotFoundError(f"Manual master file not found: {manual_path}")
-        manual = read_csv(manual_path)
-        if "timestamp" not in manual.columns:
-            raise ValueError("Manual master file must contain a timestamp column")
-        manual["timestamp"] = pd.to_datetime(manual["timestamp"], errors="coerce")
-        if manual["timestamp"].isna().any():
-            raise ValueError("Manual master file contains timestamps that could not be parsed")
-        manual = manual.sort_values("timestamp").drop_duplicates("timestamp", keep="last").set_index("timestamp")
-        master = master.set_index("timestamp")
-        common_index = master.index.intersection(manual.index)
-        for col in USER_EDITABLE_COLUMNS:
-            if col in manual.columns:
-                master.loc[common_index, col] = pd.to_numeric(manual.loc[common_index, col], errors="coerce")
-        master = master.reset_index()
+    master = _merge_manual_time_file(
+        master,
+        file_path=manual_master_file,
+        columns=USER_EDITABLE_COLUMNS,
+        label="Manual master file",
+    )
+    master = _merge_manual_time_file(
+        master,
+        file_path=events_file,
+        columns=EVENT_COLUMNS,
+        label="Events file",
+        blank_numeric_fill=0.0,
+        warn_ignored_rows=True,
+    )
+    master = _merge_manual_time_file(
+        master,
+        file_path=anchors_file,
+        columns=ANCHOR_COLUMNS,
+        label="Anchors file",
+        update_non_missing_only=True,
+        warn_ignored_rows=True,
+    )
+    master = _merge_manual_time_file(
+        master,
+        file_path=crop_file,
+        columns=CROP_COLUMNS,
+        label="Crop file",
+        update_non_missing_only=True,
+        warn_ignored_rows=True,
+    )
 
     for col in MASTER_COLUMNS:
         if col not in master.columns:
@@ -987,7 +1173,13 @@ def run_pipeline(
     radiation_file: str | Path,
     micro_model_file: str | Path | None = None,
     manual_master_file: str | Path | None = None,
+    events_file: str | Path | None = None,
+    anchors_file: str | Path | None = None,
+    crop_file: str | Path | None = None,
     output_master_file: str | Path = PACKAGE_DIR / "etl_master_template.csv",
+    output_events_template_file: str | Path | None = PACKAGE_DIR / "etl_events_template.csv",
+    output_anchors_template_file: str | Path | None = PACKAGE_DIR / "etl_anchors_template.csv",
+    output_crop_template_file: str | Path | None = PACKAGE_DIR / "etl_crop_template.csv",
     output_forecast_file: str | Path | None = PACKAGE_DIR / "etl_micro_climate_predictions.csv",
     output_prediction_file: str | Path | None = PACKAGE_DIR / "etl_rootzone_prediction.csv",
     start_time: str | pd.Timestamp | None = None,
@@ -1023,6 +1215,9 @@ def run_pipeline(
     master = create_master_template(
         climate_predictions,
         manual_master_file=manual_master_file,
+        events_file=events_file,
+        anchors_file=anchors_file,
+        crop_file=crop_file,
         planting_date=planting_date,
         canopy_cover_default=canopy_cover_default,
     )
@@ -1037,11 +1232,29 @@ def run_pipeline(
         forecast_path.parent.mkdir(parents=True, exist_ok=True)
         climate_predictions.to_csv(forecast_path, index=False)
 
+    manual_template_paths = write_manual_input_templates(
+        master,
+        output_events_template_file=output_events_template_file,
+        output_anchors_template_file=output_anchors_template_file,
+        output_crop_template_file=output_crop_template_file,
+        target_time=target_time,
+        anchor_time=anchor_time,
+        required_history_hours=required_history_hours,
+    )
+
+    input_notes = []
+    if not _has_path(manual_master_file) and not _has_path(events_file):
+        input_notes.append("No events file/manual master was provided; irrigation and fertilizer inputs are assumed 0.")
+    if not _has_path(manual_master_file) and not _has_path(anchors_file):
+        input_notes.append("No anchors file/manual master was provided; rootzone prediction needs a measured ph/ec_ms anchor.")
+
     result = {
         "weather_file": str(weather_path),
         "radiation_file": str(radiation_path),
         "forecast_rows": len(climate_predictions),
         "master_file": str(output_master_path),
+        "manual_input_templates": manual_template_paths,
+        "input_notes": input_notes,
         "forecast_file": str(forecast_path) if forecast_path else None,
         "rootzone_prediction": None,
         "prediction_file": None,
@@ -1070,9 +1283,15 @@ def print_pipeline_result(result: dict) -> None:
     print(f"Master CSV    : {result['master_file']}")
     if result.get("forecast_file"):
         print(f"Forecast CSV  : {result['forecast_file']}")
+    templates = result.get("manual_input_templates") or {}
+    for label in ("events", "anchors", "crop"):
+        if templates.get(label):
+            print(f"{label.title()} input : {templates[label]}")
+    for note in result.get("input_notes") or []:
+        print(f"Note         : {note}")
     prediction = result.get("rootzone_prediction")
     if prediction is None:
-        print("Rootzone prediction was not run. Fill the master CSV with fert/irrigation events and pH/EC anchor values, then rerun.")
+        print("Rootzone prediction was not run. Fill the anchors/events input files, then rerun with rootzone enabled.")
         return
 
     print(f"Prediction CSV: {result.get('prediction_file')}")
@@ -1094,7 +1313,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--radiation-file", required=True)
     parser.add_argument("--micro-model-file", default=None)
     parser.add_argument("--manual-master-file", default=None)
+    parser.add_argument("--events-file", default=None, help="Optional small CSV with timestamp plus irrigation/fertilizer event columns.")
+    parser.add_argument("--anchors-file", default=None, help="Optional small CSV with timestamp, ph, and ec_ms anchor measurements.")
+    parser.add_argument("--crop-file", default=None, help="Optional small CSV with timestamp plus canopy_cover and/or days_after_planting.")
     parser.add_argument("--output-master-file", default=str(PACKAGE_DIR / "etl_master_template.csv"))
+    parser.add_argument("--output-events-template-file", default=str(PACKAGE_DIR / "etl_events_template.csv"))
+    parser.add_argument("--output-anchors-template-file", default=str(PACKAGE_DIR / "etl_anchors_template.csv"))
+    parser.add_argument("--output-crop-template-file", default=str(PACKAGE_DIR / "etl_crop_template.csv"))
     parser.add_argument("--output-forecast-file", default=str(PACKAGE_DIR / "etl_micro_climate_predictions.csv"))
     parser.add_argument("--output-prediction-file", default=str(PACKAGE_DIR / "etl_rootzone_prediction.csv"))
     parser.add_argument("--start-time", default=None)
@@ -1117,7 +1342,13 @@ def main(argv: list[str] | None = None) -> dict:
         radiation_file=args.radiation_file,
         micro_model_file=args.micro_model_file,
         manual_master_file=args.manual_master_file,
+        events_file=args.events_file,
+        anchors_file=args.anchors_file,
+        crop_file=args.crop_file,
         output_master_file=args.output_master_file,
+        output_events_template_file=args.output_events_template_file,
+        output_anchors_template_file=args.output_anchors_template_file,
+        output_crop_template_file=args.output_crop_template_file,
         output_forecast_file=args.output_forecast_file,
         output_prediction_file=args.output_prediction_file,
         start_time=args.start_time,

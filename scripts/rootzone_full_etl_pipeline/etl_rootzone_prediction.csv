@@ -1,2 +1,0 @@
-anchor_time,target_time,gap_hours,anchor_ph,anchor_ec_ms,predicted_ph,predicted_ec_ms,model_component,model_file
-2025-09-10 07:50:00,2025-09-11 07:30:00,23.666666666666668,7.87,0.342,7.914680714607239,0.3173866183931332,xgboost,C:\Users\User\Desktop\Predictive_Modeling_Of_Rootzone_Variables_Using_Greenhouse_Data\scripts\rootzone_full_etl_pipeline\v8_unified_model_48h_no_rh_shared_model.joblib

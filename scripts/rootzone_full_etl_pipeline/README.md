@@ -1,110 +1,115 @@
-# Full ETL Pipeline - Bet Dagan to Rootzone Prediction
+---
+title: Rootzone Soft Sensor
+emoji: 🌱
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+license: mit
+---
 
-This folder now includes a full no-RH prediction pipeline:
+# Rootzone Prediction Dashboard
 
-1. Load Bet Dagan weather and radiation CSV files.
-2. Use `micro_climate_3day_unified_model.joblib` to predict greenhouse climate columns.
-3. Create a rootzone `master.csv`-format file.
-4. Let the user add irrigation, fertilizer, pH, and EC anchor values.
-5. Run `v8_unified_model_48h_no_rh_shared_model.joblib` to predict rootzone pH and EC.
+This folder is the portable dashboard package for the rootzone pH/EC prediction workflow.
 
-## Files
+The dashboard lets a user:
 
-- `rootzone_full_etl.py` - reusable ETL and prediction code
-- `full_etl_rootzone_pipeline.ipynb` - notebook wrapper for easy use
-- `micro_climate_3day_unified_model.joblib` - Bet Dagan to greenhouse climate model
-- `v8_unified_model_48h_no_rh_shared_model.joblib` - final no-RH rootzone model
-- `v8_unified_model_48h_no_rh_model_meta.json` - rootzone feature metadata
-- `master.csv` - example filled master file
+1. Upload Bet Dagan weather and radiation CSV files.
+2. Create a downloadable micro-climate/weather prediction CSV.
+3. Enter current pH/EC status and timestamp.
+4. Add irrigation, gypsum, Kortin, and type A/B fertilizer events using dose presets.
+5. Pick a target prediction time.
+6. Run the saved rootzone model and download the prediction outputs.
 
-## Python Packages
+## Required Files
 
-The full ETL needs:
+Keep these files together in this folder:
+
+- `rootzone_web_app.py` - guided browser interface
+- `dashboard_template.html` - dashboard UI template
+- `rootzone_full_etl.py` - ETL and model feature logic used by the app
+- `fertilizer_dose_presets.json` - saved type A/B fertilizer dose values
+- `requirements.txt` - Python package list
+- `micro_climate_3day_unified_model.joblib` - saved micro-climate model
+- `v8_unified_model_48h_no_rh_shared_model.joblib` - saved rootzone model
+- `v8_unified_model_48h_no_rh_model_meta.json` - rootzone model metadata
+
+Deployment helpers:
+
+- `run_windows.bat` - double-click Windows runner
+- `run_mac_linux.sh` - Mac/Linux runner
+- `Dockerfile` - container build file
+- `docker-compose.yml` - local Docker runner
+- `netlify.toml` - Netlify static frontend config
+- `netlify_site/` - static frontend for Netlify
+- `.dockerignore` - Docker cleanup rules
+- `.gitignore` - ignores runtime output
+- `DEPLOYMENT.md` - sharing and hosting instructions
+
+## Run On Windows
+
+Double-click:
+
+```text
+run_windows.bat
+```
+
+The first run creates a local `.venv` folder and installs the required packages. Later runs are faster.
+
+## Run On Mac Or Linux
 
 ```bash
-pip install numpy pandas joblib scikit-learn xgboost lightgbm
+chmod +x run_mac_linux.sh
+./run_mac_linux.sh
 ```
 
-`lightgbm` is required because the micro-climate forecast model was trained with LightGBM.
-
-## Basic Use In The Notebook
-
-Open `full_etl_rootzone_pipeline.ipynb`, edit only the first cell, and run all cells.
-
-For the current project files, the default paths are:
-
-```python
-WEATHER_FILE = '../../data/raw/bet_dagan_weather.csv'
-RADIATION_FILE = '../../data/raw/bet_dagan_radiation.csv'
-MANUAL_MASTER_FILE = 'master.csv'
-TARGET_TIME = '2025-09-21 21:10'
-```
-
-`MANUAL_MASTER_FILE = 'master.csv'` means the ETL keeps the already filled pH, EC, irrigation, fertilizer, canopy, and planting-day values from the current master file while replacing the climate columns from the weather forecast model.
-
-## Use With New Data
-
-1. Put the new Bet Dagan weather and radiation CSV files in this folder, or point `WEATHER_FILE` and `RADIATION_FILE` to their paths.
-2. Set `MANUAL_MASTER_FILE = None`.
-3. Run the notebook with `RUN_ROOTZONE_PREDICTION = False`.
-4. Open the generated `etl_master_template.csv`.
-5. Fill the user-editable columns:
-   - `ph`
-   - `ec_ms`
-   - `irrigation_ml_current`
-   - `fertilization_flag`
-   - `fertilization_type_a_flag`
-   - `fertilization_type_b_flag`
-   - fertilizer amount columns
-   - `canopy_cover` if not supplied by another file
-   - `days_after_planting` if `PLANTING_DATE` was not set
-   
-Use `0` for confirmed no irrigation or fertilization event. Do not leave event amount/flag cells blank inside the 48-hour history and prediction window.
-6. Set `MANUAL_MASTER_FILE = 'etl_master_template.csv'`.
-7. Set `RUN_ROOTZONE_PREDICTION = True`.
-8. Run the notebook again.
-
-The rootzone prediction is saved to `etl_rootzone_prediction.csv`.
-
-## Important Checks
-
-The ETL stops with a clear error if something required is missing.
-
-Forecast-model checks:
-
-- Bet Dagan timestamps must parse correctly.
-- Weather and radiation files must overlap in time.
-- Required Bet Dagan weather/radiation columns must exist.
-- Large timestamp gaps are blocked by `MAX_EXTERNAL_GAP_HOURS`.
-- The engineered forecast features must match the joblib model feature list.
-
-Rootzone-model checks:
-
-- The master file must contain all rootzone input columns.
-- The anchor row must contain both `ph` and `ec_ms`.
-- The target must be after the anchor and no more than 48 hours after it.
-- The master must include 48 hours of rows before the anchor.
-- `internal_radiation` must be valid in the 6 hours before the target for `hist_dark_recent_6h`.
-
-Irrigation or fertilizer events 36 hours before the anchor are handled correctly as long as the master file contains the full 48-hour window before the anchor. If the file starts only 36 hours before the anchor, the ETL stops because it cannot know whether the missing first 12 hours had no activity or missing data.
-
-## Command-Line Example
-
-From this folder:
+## Run With Docker
 
 ```bash
-python rootzone_full_etl.py ^
-  --weather-file ../../data/raw/bet_dagan_weather.csv ^
-  --radiation-file ../../data/raw/bet_dagan_radiation.csv ^
-  --manual-master-file master.csv ^
-  --target-time "2025-09-21 21:10"
+docker compose up --build
 ```
 
-To only create the editable master template:
+Then open:
 
-```bash
-python rootzone_full_etl.py ^
-  --weather-file ../../data/raw/bet_dagan_weather.csv ^
-  --radiation-file ../../data/raw/bet_dagan_radiation.csv ^
-  --no-rootzone
+```text
+http://127.0.0.1:8765
 ```
+
+## Deploy On Hugging Face Spaces
+
+Use:
+
+- SDK: Docker
+- Template: Blank
+- Hardware: Free CPU
+
+Upload the package files to the Space. The included `Dockerfile` already listens on Hugging Face's required port `7860`.
+
+Ignore the example FastAPI instructions shown by Hugging Face; they are only a generic starter guide.
+
+## Deploy With Netlify
+
+Netlify can host the dashboard frontend, but not the Python model backend. For Netlify deployment:
+
+1. Deploy the backend from this folder with Docker on Render, Railway, Fly.io, or another Python/Docker host.
+2. Set backend `ALLOWED_ORIGINS` to your Netlify site URL.
+3. Edit `netlify_site/config.js` and set `window.ROOTZONE_API_BASE_URL` to the backend URL.
+4. Deploy this folder to Netlify. `netlify.toml` publishes `netlify_site`.
+
+See `DEPLOYMENT.md` for the full checklist.
+
+## Fertilizer Presets
+
+Type A/B normal dose values are stored in:
+
+```text
+fertilizer_dose_presets.json
+```
+
+Edit that file if the operational normal dose changes. In the dashboard, users choose type A or B and set a dose multiplier such as `1`, `2`, or another value.
+
+Gypsum and Kortin are entered directly in the app. The dose multiplier only applies to type A/B fertilizer presets.
+
+## Runtime Output
+
+The app creates an `app_runs/` folder while it is running. That folder contains uploaded files and generated outputs for each run. It is ignored by git and does not need to be copied for deployment.
