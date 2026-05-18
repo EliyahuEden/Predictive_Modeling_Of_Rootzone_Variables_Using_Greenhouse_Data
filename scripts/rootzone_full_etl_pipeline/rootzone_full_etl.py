@@ -962,12 +962,15 @@ def get_features_shared(master_df, anchor_idx, current_idx):
 
 
 def robust_linear_gate(feats, meta):
+    gap_hours = feats.get("gap_hours", np.inf)
+    min_gap_h = meta.get("ROBUST_LINEAR_GATE_MIN_GAP_H", 0.0)
+    min_salt_total = meta.get("ROBUST_LINEAR_GATE_MIN_SALT_TOTAL", 250.0)
     return bool(
-        feats.get("fert_salt_total_t0_t1", 0.0) >= 250.0
+        feats.get("fert_salt_total_t0_t1", 0.0) >= min_salt_total
         and feats.get("irr_after_last_salt", 0.0) <= 1.0
         and feats.get("salt_conc_t0_t1", 0.0) >= 3.0
         and feats.get("ec0", np.inf) <= 0.8
-        and feats.get("gap_hours", np.inf) <= meta["ROBUST_LINEAR_GATE_MAX_GAP_H"]
+        and min_gap_h <= gap_hours <= meta["ROBUST_LINEAR_GATE_MAX_GAP_H"]
     )
 
 

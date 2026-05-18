@@ -205,6 +205,92 @@ def snap_timestamp(master: pd.DataFrame, value: str, label: str) -> tuple[pd.Tim
     return pd.Timestamp(timestamps.loc[idx]), idx
 
 
+# ── Prediction pre-flight validation ──────────────────────────────────────────
+
+MIN_CLIMATE_BEFORE_ANCHOR_H = 6      # hours of climate data required before anchor
+EVENT_WINDOW_H = 48                   # how far back events are considered
+
+
+def validate_prediction_inputs(
+    master: pd.DataFrame,
+    anchor_ts: pd.Timestamp,
+    target_ts: pd.Timestamp,
+    events: list[dict],
+) -> None:
+    """Raise ValueError with a clear message if any pre-flight check fails."""
+
+    ts_col = pd.to_datetime(master["timestamp"], errors="coerce")
+    ts_min: pd.Timestamp = ts_col.min()
+    ts_max: pd.Timestamp = ts_col.max()
+
+    # ── 1. Anchor must be inside the weather data ──────────────────────────────
+    if anchor_ts < ts_min:
+        raise ValueError(
+            f"Anchor time {anchor_ts:%Y-%m-%d %H:%M} is before the start of the "
+            f"weather data ({ts_min:%Y-%m-%d %H:%M}). "
+            "Upload weather files that cover the anchor time."
+        )
+    if anchor_ts > ts_max:
+        raise ValueError(
+            f"Anchor time {anchor_ts:%Y-%m-%d %H:%M} is after the end of the "
+            f"weather data ({ts_max:%Y-%m-%d %H:%M}). "
+            "Upload weather files that cover the anchor time."
+        )
+
+    # ── 2. At least MIN_CLIMATE_BEFORE_ANCHOR_H of climate before anchor ──────
+    climate_lead_h = (anchor_ts - ts_min).total_seconds() / 3600
+    if climate_lead_h < MIN_CLIMATE_BEFORE_ANCHOR_H:
+        raise ValueError(
+            f"Only {climate_lead_h:.1f} h of climate data exist before the anchor time "
+            f"({anchor_ts:%Y-%m-%d %H:%M}). "
+            f"The model needs at least {MIN_CLIMATE_BEFORE_ANCHOR_H} h of climate data "
+            "before the anchor. Move the anchor later or upload earlier weather data."
+        )
+
+    # ── 3. Target must be strictly after anchor ────────────────────────────────
+    if target_ts <= anchor_ts:
+        raise ValueError(
+            f"Target time ({target_ts:%Y-%m-%d %H:%M}) must be after "
+            f"anchor time ({anchor_ts:%Y-%m-%d %H:%M})."
+        )
+
+    # ── 4. Target must not exceed the weather data ────────────────────────────
+    if target_ts > ts_max:
+        raise ValueError(
+            f"Target time {target_ts:%Y-%m-%d %H:%M} is after the end of the "
+            f"weather data ({ts_max:%Y-%m-%d %H:%M}). "
+            "The model cannot predict beyond the available climate data. "
+            "Upload a weather file that covers the target time, or choose an earlier target."
+        )
+
+    # ── 5. Events must fall in [anchor − 48 h, target] ────────────────────
+    # Events before anchor  = past irrigation/fert (needed for model features).
+    # Events between anchor and target = planned irrigation/fert (valid).
+    # Events after target   = outside prediction window, meaningless.
+    event_window_start = anchor_ts - pd.Timedelta(hours=EVENT_WINDOW_H)
+    bad_events = []
+    for i, ev in enumerate(events):
+        ev_ts = pd.Timestamp(ev.get("time", ""))
+        if ev_ts > target_ts:
+            bad_events.append(
+                f"  Event {i + 1} at {ev_ts:%Y-%m-%d %H:%M} is after the target time "
+                f"({target_ts:%Y-%m-%d %H:%M}) — it falls outside the prediction window."
+            )
+        elif ev_ts < event_window_start:
+            bad_events.append(
+                f"  Event {i + 1} at {ev_ts:%Y-%m-%d %H:%M} is more than "
+                f"{EVENT_WINDOW_H} h before the anchor — it falls outside the model's "
+                "feature window and will have no effect."
+            )
+    if bad_events:
+        detail = "\n".join(bad_events)
+        raise ValueError(
+            f"Some events are outside the valid window "
+            f"({event_window_start:%Y-%m-%d %H:%M} → {target_ts:%Y-%m-%d %H:%M}):\n"
+            + detail
+        )
+
+
 def apply_events(master: pd.DataFrame, events: list[dict], presets: dict) -> pd.DataFrame:
     for col in EVENT_COLUMNS:
         master[col] = pd.to_numeric(master[col], errors="coerce").fillna(0.0)
@@ -342,6 +428,15 @@ def handle_prediction(payload: dict) -> dict:
 
     anchor_ts, anchor_idx = snap_timestamp(master, payload.get("anchor_time"), "Anchor time")
     target_ts, _ = snap_timestamp(master, payload.get("target_time"), "Target time")
+
+    # ── Pre-flight validation ──────────────────────────────────────────────────
+    validate_prediction_inputs(
+        master,
+        anchor_ts,
+        target_ts,
+        payload.get("events") or [],
+    )
+
     if payload.get("anchor_ph") in (None, "") or payload.get("anchor_ec") in (None, ""):
         raise ValueError("Current pH and EC are required")
     master.loc[anchor_idx, "ph"] = float(payload.get("anchor_ph"))
@@ -427,7 +522,14 @@ class RootzoneHandler(BaseHTTPRequestHandler):
                 text_response(self, 'window.ROOTZONE_API_BASE_URL = "";', content_type="application/javascript; charset=utf-8")
                 return
             if path == "/api/presets":
-                json_response(self, {"ok": True, **load_presets()})
+                json_response(self, {
+                    "ok": True,
+                    **load_presets(),
+                    "validation": {
+                        "min_climate_before_anchor_h": MIN_CLIMATE_BEFORE_ANCHOR_H,
+                        "event_window_h": EVENT_WINDOW_H,
+                    },
+                })
                 return
             if path.startswith("/download/"):
                 _, _, run_id, kind = path.split("/", 3)

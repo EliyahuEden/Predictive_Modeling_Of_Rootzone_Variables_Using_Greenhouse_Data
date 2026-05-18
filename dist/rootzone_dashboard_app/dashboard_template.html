@@ -603,7 +603,7 @@
         <div class="panel-title">
           <div>
             <h2>Rootzone Inputs</h2>
-            <p>Enter the current measured status and the operational events that happened before the prediction time.</p>
+            <p>Enter the current measured pH/EC status and all irrigation and fertilizer events that occurred in the <strong>48 h before the anchor time</strong>. The weather data must also cover at least <strong>6 h before the anchor time</strong>.</p>
           </div>
           <div id="eventStatus" class="status">No events added</div>
         </div>
@@ -683,6 +683,7 @@
         </div>
 
         <div class="actions" style="margin-top:16px">
+          <div id="requirementsBanner"></div>
           <button type="button" id="predictButton">Run rootzone prediction</button>
           <div id="predictStatus" class="status"></div>
         </div>
@@ -714,9 +715,20 @@
   <script src="config.js"></script>
   <script>
     const API_BASE = (window.ROOTZONE_API_BASE_URL || '').replace(/\/$/, '');
-    const state = { runId: null, events: [], downloads: {}, timestampMin: null, timestampMax: null, forecastRows: 0 };
+    const state = {
+      runId: null,
+      events: [],
+      downloads: {},
+      timestampMin: null,   // ISO string – start of weather data
+      timestampMax: null,   // ISO string – end of weather data
+      forecastRows: 0,
+      // validation constants – fetched from backend on load
+      MIN_CLIMATE_H: 6,
+      EVENT_WINDOW_H: 48,
+    };
     const $ = (id) => document.getElementById(id);
 
+    // ── Helpers ────────────────────────────────────────────────────────────────
     function apiUrl(path) {
       if (!path) return '#';
       if (/^https?:\/\//i.test(path)) return path;
@@ -744,28 +756,51 @@
     }
 
     function shiftInputHours(value, hours) {
-      const date = new Date(value);
+      const date = new Date(value + ':00');
       if (Number.isNaN(date.getTime())) return toInputTime(value);
-      date.setHours(date.getHours() + hours);
-      const pad = (num) => String(num).padStart(2, '0');
+      date.setTime(date.getTime() + hours * 3600000);
+      const pad = (n) => String(n).padStart(2, '0');
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 
     function asDate(value) {
       if (!value) return null;
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? null : date;
+      const d = new Date(value + (value.includes(':') && value.length === 16 ? ':00' : ''));
+      return Number.isNaN(d.getTime()) ? null : d;
     }
 
+    function diffHours(a, b) {
+      // Returns (b - a) in hours
+      return (asDate(b) - asDate(a)) / 3600000;
+    }
+
+    // ── Per-event validation ──────────────────────────────────────────────────
     function eventValidation(event) {
-      const eventDate = asDate(event.time);
-      const minDate = asDate(state.timestampMin);
-      const maxDate = asDate(state.timestampMax);
+      const eventDate  = asDate(event.time);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+      const anchorDate = asDate($('anchorTime').value);
       const targetDate = asDate($('targetTime').value);
+
       if (!eventDate) return { kind: 'bad', text: 'Bad time' };
-      if (minDate && eventDate < minDate) return { kind: 'bad', text: 'Before forecast' };
-      if (maxDate && eventDate > maxDate) return { kind: 'bad', text: 'After forecast' };
-      if (targetDate && eventDate > targetDate) return { kind: 'bad', text: 'After target' };
+
+      // Outside the weather data entirely
+      if (minDate && eventDate < minDate)
+        return { kind: 'bad', text: 'Before weather data start' };
+      if (maxDate && eventDate > maxDate)
+        return { kind: 'bad', text: 'After weather data end' };
+
+      // After target – truly outside the prediction window
+      if (targetDate && eventDate > targetDate)
+        return { kind: 'bad', text: 'After target time' };
+
+      // More than EVENT_WINDOW_H before anchor – outside model feature window
+      if (anchorDate) {
+        const hoursBeforeAnchor = (anchorDate - eventDate) / 3600000;
+        if (hoursBeforeAnchor > state.EVENT_WINDOW_H)
+          return { kind: 'warn', text: `>${state.EVENT_WINDOW_H}h before anchor (no effect)` };
+      }
+
       return { kind: 'good', text: 'Ready' };
     }
 
@@ -776,26 +811,159 @@
         Number(event.kortin_mg || 0) > 0;
     }
 
+    // ── Pre-flight checks (returns array of {kind, text} issues) ─────────────
+    function preflightChecks() {
+      const issues = [];
+      const anchorVal  = $('anchorTime').value;
+      const targetVal  = $('targetTime').value;
+      const anchorDate = asDate(anchorVal);
+      const targetDate = asDate(targetVal);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+
+      if (!state.runId) {
+        issues.push({ kind: 'error', text: 'No forecast run — complete Step 1 first.' });
+        return issues;
+      }
+
+      // Anchor inside weather data
+      if (minDate && anchorDate && anchorDate < minDate)
+        issues.push({ kind: 'error', text: `Anchor time (${prettyTime(anchorVal)}) is before the weather data start (${prettyTime(state.timestampMin)}).` });
+
+      if (maxDate && anchorDate && anchorDate > maxDate)
+        issues.push({ kind: 'error', text: `Anchor time (${prettyTime(anchorVal)}) is after the weather data end (${prettyTime(state.timestampMax)}). Upload weather data that covers the anchor time.` });
+
+      // At least MIN_CLIMATE_H of climate before anchor
+      if (minDate && anchorDate) {
+        const leadH = (anchorDate - minDate) / 3600000;
+        if (leadH < state.MIN_CLIMATE_H)
+          issues.push({ kind: 'error', text: `Only ${leadH.toFixed(1)} h of climate data before anchor. The model needs at least ${state.MIN_CLIMATE_H} h — move anchor later or upload earlier weather data.` });
+      }
+
+      // Target after anchor
+      if (anchorDate && targetDate && targetDate <= anchorDate)
+        issues.push({ kind: 'error', text: 'Target time must be after the anchor time.' });
+
+      // Target inside weather data
+      if (maxDate && targetDate && targetDate > maxDate)
+        issues.push({ kind: 'error', text: `Target time (${prettyTime(targetVal)}) is after the weather data end (${prettyTime(state.timestampMax)}). The model cannot predict beyond available climate data.` });
+
+      // Required fields
+      if (!$('anchorPh').value)
+        issues.push({ kind: 'error', text: 'Current pH is required.' });
+      if (!$('anchorEc').value)
+        issues.push({ kind: 'error', text: 'Current EC is required.' });
+
+      // Bad events
+      const badCount = state.events.filter(ev => eventValidation(ev).kind === 'bad').length;
+      if (badCount)
+        issues.push({ kind: 'error', text: `${badCount} event row(s) have errors — fix them before predicting.` });
+
+      // Advisory: no events in the full window (anchor−48h → target)
+      if (issues.length === 0 && anchorDate) {
+        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
+        const windowEnd   = targetDate || anchorDate;
+        const windowEvents = state.events.filter(ev => {
+          const d = asDate(ev.time);
+          return d && d >= windowStart && d <= windowEnd;
+        });
+        if (windowEvents.length === 0)
+          issues.push({ kind: 'warn', text: `No irrigation or fertilizer events in the ${state.EVENT_WINDOW_H}-h window before anchor. If events occurred, add them for accurate predictions.` });
+      }
+
+      return issues;
+    }
+
+    // ── Requirements banner (live, updates on input change) ──────────────────
+    function updateRequirementsBanner() {
+      const banner = $('requirementsBanner');
+      if (!state.runId) { banner.innerHTML = ''; return; }
+
+      const anchorVal  = $('anchorTime').value;
+      const targetVal  = $('targetTime').value;
+      const anchorDate = asDate(anchorVal);
+      const targetDate = asDate(targetVal);
+      const minDate    = asDate(state.timestampMin);
+      const maxDate    = asDate(state.timestampMax);
+
+      const rows = [];
+
+      // Climate coverage before anchor
+      if (minDate && anchorDate) {
+        const leadH = (anchorDate - minDate) / 3600000;
+        const ok = leadH >= state.MIN_CLIMATE_H;
+        rows.push({ ok, text: `Climate data before anchor: ${leadH.toFixed(1)} h (need ≥ ${state.MIN_CLIMATE_H} h)` });
+      } else {
+        rows.push({ ok: false, text: `Set anchor time to check climate coverage` });
+      }
+
+      // Target within weather data
+      if (maxDate && targetDate) {
+        const ok = targetDate <= maxDate;
+        rows.push({ ok, text: `Target within weather data: ${ok ? 'Yes' : `No — weather ends ${prettyTime(state.timestampMax)}`}` });
+      }
+
+      // Events in window
+      if (anchorDate) {
+        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
+        const windowEnd   = targetDate || anchorDate;
+        const count = state.events.filter(ev => {
+          const d = asDate(ev.time);
+          return d && d >= windowStart && d <= windowEnd && eventValidation(ev).kind !== 'bad';
+        }).length;
+        rows.push({
+          ok: count > 0,
+          warn: count === 0,
+          text: `Events in window (${state.EVENT_WINDOW_H}h before anchor → target): ${count} (add irrigation/fert events for better accuracy)`
+        });
+      }
+
+      banner.innerHTML = `
+        <div style="background:#f8fbfc;border:1px solid var(--line);border-radius:8px;padding:13px 16px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:9px;">Data Requirements Check</div>
+          <div style="display:grid;gap:6px;">
+            ${rows.map(r => `
+              <div style="display:flex;align-items:center;gap:9px;font-size:13px;">
+                <span style="flex:0 0 18px;height:18px;border-radius:50%;background:${r.ok ? 'var(--green)' : (r.warn ? 'var(--amber)' : 'var(--red)')};display:grid;place-items:center;">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    ${r.ok
+                      ? '<path d="M2 5l2 2 4-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'
+                      : '<path d="M3 3l4 4M7 3l-4 4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>'}
+                  </svg>
+                </span>
+                <span style="color:${r.ok ? 'var(--ink)' : (r.warn ? 'var(--amber)' : 'var(--red)')}">${r.text}</span>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }
+
+    // ── Summary sidebar ───────────────────────────────────────────────────────
     function updateSummary() {
       $('summaryRun').textContent = state.runId ? state.runId.split('_').slice(-1)[0] : 'Not started';
       $('summaryRows').textContent = state.forecastRows ? Number(state.forecastRows).toLocaleString() : '-';
-      $('summaryRange').textContent = state.timestampMin && state.timestampMax ? `${prettyTime(state.timestampMin)} to ${prettyTime(state.timestampMax)}` : '-';
+      $('summaryRange').textContent = state.timestampMin && state.timestampMax
+        ? `${prettyTime(state.timestampMin)} → ${prettyTime(state.timestampMax)}`
+        : '-';
       $('summaryEvents').textContent = String(state.events.length);
       $('summaryTarget').textContent = $('targetTime').value ? prettyTime($('targetTime').value) : '-';
+      updateRequirementsBanner();
     }
 
+    // ── Event table ───────────────────────────────────────────────────────────
     function renderEvents() {
       const body = $('eventsTable').querySelector('tbody');
       body.innerHTML = '';
       if (!state.events.length) {
         const empty = document.createElement('tr');
-        empty.innerHTML = '<td colspan="8">No operational events added.</td>';
+        empty.innerHTML = '<td colspan="8" style="color:var(--muted)">No operational events added. Add irrigation and fertilizer events that occurred in the 48 h before the anchor time.</td>';
         body.appendChild(empty);
       }
       let badCount = 0;
+      let warnCount = 0;
       state.events.forEach((event, index) => {
         const validation = eventValidation(event);
         if (validation.kind === 'bad') badCount += 1;
+        if (validation.kind === 'warn') warnCount += 1;
         const row = document.createElement('tr');
         if (validation.kind === 'bad') row.classList.add('invalid');
         row.innerHTML = `
@@ -805,19 +973,24 @@
           <td>${event.fert_type === 'none' ? '-' : event.multiplier}</td>
           <td>${event.gypsum_mg}</td>
           <td>${event.kortin_mg}</td>
-          <td><span class="tag ${validation.kind === 'bad' ? 'bad' : ''}">${validation.text}</span></td>
+          <td><span class="tag ${validation.kind === 'bad' ? 'bad' : validation.kind === 'warn' ? 'warn' : ''}">${validation.text}</span></td>
           <td><button type="button" class="danger" data-remove="${index}">Remove</button></td>
         `;
         body.appendChild(row);
       });
       if (badCount) {
-        setStatus('eventStatus', `${badCount} event row needs attention`, 'bad');
+        setStatus('eventStatus', `${badCount} event row(s) need fixing`, 'bad');
+      } else if (warnCount) {
+        setStatus('eventStatus', `${warnCount} event(s) outside the ${state.EVENT_WINDOW_H}-h window (will have no effect)`, 'warn');
       } else {
-        setStatus('eventStatus', state.events.length ? `${state.events.length} event rows ready` : 'No events added', state.events.length ? 'good' : '');
+        setStatus('eventStatus', state.events.length
+          ? `${state.events.length} event(s) ready`
+          : `No events added — add irrigation/fert events from the ${state.EVENT_WINDOW_H} h before anchor`, state.events.length ? 'good' : 'warn');
       }
       updateSummary();
     }
 
+    // ── Event listeners ───────────────────────────────────────────────────────
     document.addEventListener('click', (event) => {
       const dose = event.target.getAttribute('data-dose');
       if (dose) $('doseMultiplier').value = dose;
@@ -828,11 +1001,14 @@
       }
     });
 
-    $('targetTime').addEventListener('change', () => {
-      renderEvents();
-      updateSummary();
+    ['anchorTime', 'targetTime'].forEach(id => {
+      $(id).addEventListener('change', () => {
+        renderEvents();
+        updateSummary();
+      });
     });
 
+    // ── Step 1: Forecast form ─────────────────────────────────────────────────
     $('forecastForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       setStatus('forecastStatus', 'Running forecast...');
@@ -841,23 +1017,30 @@
         const response = await fetch(apiUrl('/api/forecast'), { method: 'POST', body: new FormData(event.target) });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Forecast failed');
-        state.runId = data.run_id;
-        state.downloads = data.downloads;
-        state.timestampMin = data.timestamp_min;
-        state.timestampMax = data.timestamp_max;
-        state.forecastRows = data.forecast_rows;
+
+        state.runId          = data.run_id;
+        state.downloads      = data.downloads;
+        state.timestampMin   = data.timestamp_min;
+        state.timestampMax   = data.timestamp_max;
+        state.forecastRows   = data.forecast_rows;
+
         $('runId').textContent = `Run ${data.run_id}`;
         $('forecastPanel').classList.remove('hidden');
         $('rootzonePanel').classList.remove('hidden');
         $('forecastDownload').href = apiUrl(data.downloads.forecast);
-        $('masterDownload').href = apiUrl(data.downloads.master);
+        $('masterDownload').href   = apiUrl(data.downloads.master);
         $('forecastRange').textContent = `${Number(data.forecast_rows).toLocaleString()} rows`;
-        $('rowsMetric').textContent = Number(data.forecast_rows).toLocaleString();
+        $('rowsMetric').textContent  = Number(data.forecast_rows).toLocaleString();
         $('startMetric').textContent = prettyTime(data.timestamp_min);
-        $('endMetric').textContent = prettyTime(data.timestamp_max);
+        $('endMetric').textContent   = prettyTime(data.timestamp_max);
+
+        // Smart defaults: anchor = ts_max − MIN_CLIMATE_H, target = ts_max
+        // Event default = anchor − 12h (middle of the 48h event window)
+        const anchorDefault = shiftInputHours(data.timestamp_max, -state.MIN_CLIMATE_H);
         $('targetTime').value = toInputTime(data.timestamp_max);
-        $('anchorTime').value = shiftInputHours(data.timestamp_max, -24);
-        $('eventTime').value = shiftInputHours(data.timestamp_max, -24);
+        $('anchorTime').value = anchorDefault;
+        $('eventTime').value  = shiftInputHours(anchorDefault, -12);
+
         setStatus('forecastStatus', 'Forecast ready', 'good');
         setStep('stepWeather', 'done');
         setStep('stepForecast', 'done');
@@ -871,15 +1054,17 @@
       }
     });
 
+    // ── Add event ─────────────────────────────────────────────────────────────
     $('addEvent').addEventListener('click', () => {
       const eventRow = {
-        time: $('eventTime').value,
+        time:          $('eventTime').value,
         irrigation_ml: Number($('irrigationMl').value || 0),
-        fert_type: $('fertType').value,
-        multiplier: Number($('doseMultiplier').value || 1),
-        gypsum_mg: Number($('gypsumMg').value || 0),
-        kortin_mg: Number($('kortinMg').value || 0)
+        fert_type:     $('fertType').value,
+        multiplier:    Number($('doseMultiplier').value || 1),
+        gypsum_mg:     Number($('gypsumMg').value || 0),
+        kortin_mg:     Number($('kortinMg').value || 0),
       };
+
       if (!eventRow.time) {
         setStatus('eventStatus', 'Event time is required', 'bad');
         return;
@@ -895,52 +1080,57 @@
       }
       state.events.push(eventRow);
       renderEvents();
+      // Advance event time by +1h for quick entry of consecutive events
+      $('eventTime').value = shiftInputHours(eventRow.time, 1);
       setStatus('eventStatus', 'Event added', 'good');
     });
 
+    // ── Run prediction ────────────────────────────────────────────────────────
     $('predictButton').addEventListener('click', async () => {
-      if (!state.runId) {
-        setStatus('predictStatus', 'Create weather prediction first', 'bad');
-        return;
-      }
-      if (!$('anchorTime').value || !$('targetTime').value || !$('anchorPh').value || !$('anchorEc').value) {
-        setStatus('predictStatus', 'Current pH, EC, measurement time, and target time are required', 'bad');
-        return;
-      }
-      const badEvents = state.events.filter((event) => eventValidation(event).kind === 'bad');
-      if (badEvents.length) {
-        setStatus('predictStatus', 'Fix event rows before prediction', 'bad');
+      // Run pre-flight checks and show any issues
+      const issues = preflightChecks();
+      const errors = issues.filter(i => i.kind === 'error');
+
+      if (errors.length) {
+        // Render all errors in the status area
+        $('predictStatus').innerHTML = errors.map(e =>
+          `<div style="color:var(--red);font-size:13px;margin-bottom:4px;">⚠ ${e.text}</div>`
+        ).join('');
+        $('predictStatus').className = 'status bad';
         renderEvents();
         return;
       }
+
       setStatus('predictStatus', 'Running prediction...');
       $('predictButton').disabled = true;
       try {
         const payload = {
-          run_id: state.runId,
-          anchor_time: $('anchorTime').value,
-          anchor_ph: $('anchorPh').value,
-          anchor_ec: $('anchorEc').value,
-          target_time: $('targetTime').value,
+          run_id:             state.runId,
+          anchor_time:        $('anchorTime').value,
+          anchor_ph:          $('anchorPh').value,
+          anchor_ec:          $('anchorEc').value,
+          target_time:        $('targetTime').value,
           days_after_planting: $('dapOverride').value,
-          events: state.events
+          events:             state.events,
         };
         const response = await fetch(apiUrl('/api/predict'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Prediction failed');
+
         const pred = data.prediction;
         $('resultPanel').classList.remove('hidden');
-        $('predPh').textContent = Number(pred.predicted_ph).toFixed(3);
-        $('predEc').textContent = Number(pred.predicted_ec_ms).toFixed(4);
-        $('gapHours').textContent = Number(pred.gap_hours).toFixed(1);
-        $('component').textContent = pred.model_component;
-        $('predictionDownload').href = apiUrl(data.downloads.prediction);
+        $('predPh').textContent        = Number(pred.predicted_ph).toFixed(3);
+        $('predEc').textContent        = Number(pred.predicted_ec_ms).toFixed(4);
+        $('gapHours').textContent      = Number(pred.gap_hours).toFixed(1);
+        $('component').textContent     = pred.model_component;
+        $('predictionDownload').href   = apiUrl(data.downloads.prediction);
         $('appliedMasterDownload').href = apiUrl(data.downloads.applied_master);
-        $('eventsDownload').href = apiUrl(data.downloads.events);
+        $('eventsDownload').href       = apiUrl(data.downloads.events);
+
         setStatus('predictStatus', 'Prediction ready', 'good');
         setStep('stepInputs', 'done');
         setStep('stepResult', 'done');
@@ -951,6 +1141,15 @@
       }
     });
 
+    // ── Load validation constants from backend ────────────────────────────────
+    fetch(apiUrl('/api/presets')).then(r => r.json()).then(data => {
+      if (data.validation) {
+        state.MIN_CLIMATE_H  = data.validation.min_climate_before_anchor_h;
+        state.EVENT_WINDOW_H = data.validation.event_window_h;
+      }
+    }).catch(() => {/* use defaults */});
+
+    // ── Init ──────────────────────────────────────────────────────────────────
     updateSummary();
     renderEvents();
   </script>

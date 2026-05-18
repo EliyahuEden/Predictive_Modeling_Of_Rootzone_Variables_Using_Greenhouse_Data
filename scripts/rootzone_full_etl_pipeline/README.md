@@ -75,6 +75,77 @@ Then open:
 http://127.0.0.1:8765
 ```
 
+## Run Directly With Python (No Web App)
+
+You can run the full pipeline — micro-climate forecast and rootzone prediction — directly from the command line without the web app or Docker.
+
+### 1. Install required packages
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Build the master CSV and micro-climate forecast
+
+Run this first to generate the editable input templates from your Bet Dagan files:
+
+```bash
+python rootzone_full_etl.py \
+  --weather-file bet_dagan_weather.csv \
+  --radiation-file bet_dagan_radiation.csv \
+  --no-rootzone
+```
+
+This creates four files in the same folder:
+
+- `etl_master_template.csv` — full master data table
+- `etl_micro_climate_predictions.csv` — micro-climate forecast (temp, ET0, radiation)
+- `etl_events_template.csv` — template to fill in irrigation and fertilizer events
+- `etl_anchors_template.csv` — template to fill in pH and EC anchor measurements
+
+### 3. Fill in the event and anchor templates
+
+Open `etl_events_template.csv` and add your irrigation and fertilizer events for the 48 h before the anchor time.
+
+Open `etl_anchors_template.csv` and add your current pH and EC measurement at the anchor timestamp.
+
+### 4. Run the rootzone prediction
+
+Once the templates are filled in, run the full pipeline with your anchor and target times:
+
+```bash
+python rootzone_full_etl.py \
+  --weather-file bet_dagan_weather.csv \
+  --radiation-file bet_dagan_radiation.csv \
+  --events-file etl_events_template.csv \
+  --anchors-file etl_anchors_template.csv \
+  --anchor-time "2025-09-21 06:30" \
+  --target-time "2025-09-21 12:00" \
+  --planting-date "2025-04-01"
+```
+
+Replace the dates with your actual anchor time, target time, and planting date.
+
+Output: `etl_rootzone_prediction.csv`
+
+### All available arguments
+
+| Argument | Required | Description |
+|---|---|---|
+| `--weather-file` | Yes | Path to Bet Dagan weather CSV |
+| `--radiation-file` | Yes | Path to Bet Dagan radiation CSV |
+| `--anchor-time` | Recommended | Current measurement time (`"YYYY-MM-DD HH:MM"`) |
+| `--target-time` | Recommended | Prediction target time (`"YYYY-MM-DD HH:MM"`) |
+| `--planting-date` | Recommended | Crop planting date (`"YYYY-MM-DD"`) |
+| `--canopy-cover-default` | No | Default canopy cover fraction, e.g. `0.98` |
+| `--events-file` | No | CSV with irrigation and fertilizer events |
+| `--anchors-file` | No | CSV with pH and EC anchor readings |
+| `--manual-master-file` | No | Provide a pre-built master CSV instead of generating one |
+| `--output-prediction-file` | No | Custom path for the prediction output CSV |
+| `--no-rootzone` | No | Only build master and forecast; skip the rootzone prediction |
+
+All model files (`micro_climate_3day_unified_model.joblib`, `v8_unified_model_48h_no_rh_shared_model.joblib`, `v8_unified_model_48h_no_rh_model_meta.json`) must be in the same folder as `rootzone_full_etl.py`.
+
 ## Deploy On Hugging Face Spaces
 
 Use:
