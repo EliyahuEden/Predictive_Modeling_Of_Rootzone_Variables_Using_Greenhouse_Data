@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import warnings
 from pathlib import Path
 
@@ -123,6 +124,7 @@ RADIATION_COLUMNS = [
     "global_rad_wm2",
     "direct_rad_wm2",
 ]
+RADIATION_VALUE_COLUMNS = ["diffuse_rad_wm2", "global_rad_wm2", "direct_rad_wm2"]
 
 BASE_MICRO_FEATURE_COLS = [
     "station_pressure_hpa",
@@ -162,6 +164,64 @@ BASE_MICRO_FEATURE_COLS = [
 
 SOIL_CYCLIC_MICRO_FEATURE_COLS = ["hour_sin", "hour_cos", "doy_sin", "doy_cos"]
 ALL_MICRO_FEATURE_COLS = BASE_MICRO_FEATURE_COLS + SOIL_CYCLIC_MICRO_FEATURE_COLS
+SUPPORTED_UPLOAD_EXTENSIONS = {".csv", ".xlsx", ".xls", ".json"}
+
+WEATHER_COLUMN_ALIASES = {
+    "station": "station",
+    "sname": "station",
+    "תחנה": "station",
+    "timestamp": "timestamp",
+    "date": "timestamp",
+    "תאריך ושעה (שעון קיץ)": "timestamp",
+    "BP": "station_pressure_hpa",
+    "לחץ בגובה התחנה (הקטופסקל)": "station_pressure_hpa",
+    "RH": "rel_humidity_ext",
+    "לחות יחסית (%)": "rel_humidity_ext",
+    "TD": "temp_c_ext",
+    "טמפרטורה (C°)": "temp_c_ext",
+    "TDmax": "temp_max_c_ext",
+    "טמפרטורת מקסימום (C°)": "temp_max_c_ext",
+    "TDmin": "temp_min_c_ext",
+    "טמפרטורת מינימום (C°)": "temp_min_c_ext",
+    "TG": "temp_ground_c_ext",
+    "טמפרטורה ליד הקרקע (C°)": "temp_ground_c_ext",
+    "TW": "temp_wet_c_ext",
+    "טמפרטורה לחה (C°)": "temp_wet_c_ext",
+    "WD": "wind_dir_deg",
+    "כיוון הרוח (מעלות)": "wind_dir_deg",
+    "WDmax": "gust_dir_deg",
+    "כיוון המשב העליון (מעלות)": "gust_dir_deg",
+    "WS": "wind_speed_ms",
+    "מהירות רוח (מטר לשניה)": "wind_speed_ms",
+    "WS1mm": "wind_speed_max_1m_ms",
+    "מהירות רוח דקתית מקסימלית (מטר לשניה)": "wind_speed_max_1m_ms",
+    "Ws10mm": "wind_speed_max_10m_ms",
+    "מהירות רוח 10 דקתית מקסימלית (מטר לשניה)": "wind_speed_max_10m_ms",
+    "Time": "wind_speed_max_10m_time",
+    "זמן סיום מהירות רוח 10 דקתית מקסימלית  (hhmm)": "wind_speed_max_10m_time",
+    "WSmax": "gust_speed_ms",
+    "מהירות המשב העליון (מטר לשניה)": "gust_speed_ms",
+    "STDwd": "wind_dir_std_deg",
+    "סטיית התקן של כיוון הרוח (מעלות)": "wind_dir_std_deg",
+    "Rain": "rain_mm",
+    'כמות גשם (מ"מ)': "rain_mm",
+}
+
+RADIATION_COLUMN_ALIASES = {
+    "rad_station": "rad_station",
+    "station": "rad_station",
+    "sname": "rad_station",
+    "תחנה": "rad_station",
+    "timestamp": "timestamp",
+    "date": "timestamp",
+    "תאריך ושעה (שעון קיץ)": "timestamp",
+    "DiffR": "diffuse_rad_wm2",
+    'קרינה מפוזרת (וואט/מ"ר)': "diffuse_rad_wm2",
+    "Grad": "global_rad_wm2",
+    'קרינה גלובלית (וואט/מ"ר)': "global_rad_wm2",
+    "NIP": "direct_rad_wm2",
+    'קרינה ישירה (וואט/מ"ר)': "direct_rad_wm2",
+}
 
 
 def check_required_packages(include_micro_model: bool = True) -> None:
@@ -230,8 +290,99 @@ def resolve_output_path(path_like: str | Path, *, base_dir: Path = PACKAGE_DIR) 
     return (Path.cwd() / raw).resolve()
 
 
+def _clean_column_name(name) -> str:
+    return re.sub(r"\s+", " ", str(name).replace("\ufeff", "")).strip()
+
+
+def _read_json_table(path: Path) -> pd.DataFrame:
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    if isinstance(data, list):
+        return pd.json_normalize(data)
+    if isinstance(data, dict):
+        for preferred_key in ("data", "records", "rows", "items", "values"):
+            value = data.get(preferred_key)
+            if isinstance(value, list):
+                return pd.json_normalize(value)
+        list_values = [value for value in data.values() if isinstance(value, list)]
+        if list_values:
+            best = max(list_values, key=len)
+            return pd.json_normalize(best)
+        return pd.json_normalize([data])
+    raise ValueError("JSON input must contain an object or an array of row objects")
+
+
+def read_table(path: str | Path, *, label: str = "Input file") -> pd.DataFrame:
+    path = Path(path)
+    ext = path.suffix.lower()
+    if ext not in SUPPORTED_UPLOAD_EXTENSIONS:
+        allowed = ", ".join(sorted(SUPPORTED_UPLOAD_EXTENSIONS))
+        raise ValueError(f"{label} must be a CSV, Excel, or JSON file ({allowed}); got '{ext or 'no extension'}'.")
+
+    try:
+        if ext == ".csv":
+            df = pd.read_csv(path, encoding="utf-8-sig")
+        elif ext in {".xlsx", ".xls"}:
+            df = pd.read_excel(path, sheet_name=0)
+        else:
+            df = _read_json_table(path)
+    except Exception as exc:
+        raise ValueError(f"Could not read {label} '{path.name}': {exc}") from exc
+
+    if df.empty:
+        raise ValueError(f"{label} '{path.name}' is empty.")
+    df = df.dropna(axis=0, how="all").dropna(axis=1, how="all")
+    df.columns = [_clean_column_name(col) for col in df.columns]
+    if df.empty or len(df.columns) == 0:
+        raise ValueError(f"{label} '{path.name}' does not contain tabular data.")
+    return df
+
+
 def read_csv(path: str | Path) -> pd.DataFrame:
-    return pd.read_csv(path, encoding="utf-8-sig")
+    return read_table(path, label="Input file")
+
+
+def _apply_column_aliases(df: pd.DataFrame, aliases: dict[str, str]) -> pd.DataFrame:
+    out = df.copy()
+    out.columns = [aliases.get(_clean_column_name(col), _clean_column_name(col)) for col in out.columns]
+    return out
+
+
+def _to_numeric_column(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_numeric_dtype(series):
+        return pd.to_numeric(series, errors="coerce")
+    cleaned = series.astype("string").str.strip()
+    cleaned = cleaned.replace(
+        {
+            "": pd.NA,
+            "-": pd.NA,
+            "--": pd.NA,
+            "---": pd.NA,
+            "NA": pd.NA,
+            "N/A": pd.NA,
+            "nan": pd.NA,
+            "NaN": pd.NA,
+            "null": pd.NA,
+        }
+    )
+    cleaned = cleaned.str.replace(",", "", regex=False)
+    return pd.to_numeric(cleaned, errors="coerce")
+
+
+def _coerce_required_numeric(out: pd.DataFrame, required: list[str], *, label: str) -> None:
+    missing = [c for c in required if c not in out.columns]
+    if missing:
+        raise ValueError(f"{label} is missing columns required by the forecast model: {missing}")
+    bad_counts = {
+        c: int(pd.to_numeric(out[c], errors="coerce").isna().sum())
+        for c in required
+    }
+    bad_counts = {c: n for c, n in bad_counts.items() if n}
+    if bad_counts:
+        details = ", ".join(f"{col}: {count}" for col, count in bad_counts.items())
+        raise ValueError(
+            f"{label} has non-numeric or missing values in required columns. "
+            f"Fix these columns and upload again: {details}"
+        )
 
 
 def _parse_timestamp_column(df: pd.DataFrame, *, dayfirst: bool = True) -> pd.DataFrame:
@@ -246,11 +397,11 @@ def _parse_timestamp_column(df: pd.DataFrame, *, dayfirst: bool = True) -> pd.Da
 
 
 def normalize_bet_dagan_weather(weather: pd.DataFrame) -> pd.DataFrame:
-    out = weather.copy()
+    out = _apply_column_aliases(weather, WEATHER_COLUMN_ALIASES)
     if "timestamp" not in out.columns:
         if len(out.columns) != len(WEATHER_COLUMNS):
             raise ValueError(
-                "Weather file does not have normalized columns and does not match the expected Bet Dagan column count"
+                "Weather file does not contain recognized headers and does not match the expected weather column count"
             )
         out.columns = WEATHER_COLUMNS
     if "station" in out.columns:
@@ -259,7 +410,7 @@ def normalize_bet_dagan_weather(weather: pd.DataFrame) -> pd.DataFrame:
 
     for col in out.columns:
         if col != "timestamp":
-            out[col] = pd.to_numeric(out[col], errors="coerce")
+            out[col] = _to_numeric_column(out[col])
     out = out.drop(columns=[c for c in out.columns if c != "timestamp" and out[c].isna().all()])
 
     required = [
@@ -276,18 +427,16 @@ def normalize_bet_dagan_weather(weather: pd.DataFrame) -> pd.DataFrame:
         "gust_speed_ms",
         "wind_dir_std_deg",
     ]
-    missing = [c for c in required if c not in out.columns]
-    if missing:
-        raise ValueError(f"Weather file is missing columns required by the forecast model: {missing}")
+    _coerce_required_numeric(out, required, label="Weather file")
     return out
 
 
 def normalize_bet_dagan_radiation(radiation: pd.DataFrame) -> pd.DataFrame:
-    out = radiation.copy()
+    out = _apply_column_aliases(radiation, RADIATION_COLUMN_ALIASES)
     if "timestamp" not in out.columns:
         if len(out.columns) != len(RADIATION_COLUMNS):
             raise ValueError(
-                "Radiation file does not have normalized columns and does not match the expected Bet Dagan column count"
+                "Radiation file does not contain recognized headers and does not match the expected radiation column count"
             )
         out.columns = RADIATION_COLUMNS
     if "rad_station" in out.columns:
@@ -298,13 +447,36 @@ def normalize_bet_dagan_radiation(radiation: pd.DataFrame) -> pd.DataFrame:
 
     for col in out.columns:
         if col != "timestamp":
-            out[col] = pd.to_numeric(out[col], errors="coerce")
+            out[col] = _to_numeric_column(out[col])
     out = out.drop(columns=[c for c in out.columns if c != "timestamp" and out[c].isna().all()])
 
-    required = ["diffuse_rad_wm2", "global_rad_wm2", "direct_rad_wm2"]
-    missing = [c for c in required if c not in out.columns]
+    missing = [c for c in RADIATION_VALUE_COLUMNS if c not in out.columns]
     if missing:
         raise ValueError(f"Radiation file is missing columns required by the forecast model: {missing}")
+
+    available_global = out["global_rad_wm2"].notna()
+    global_missing = out["global_rad_wm2"].isna()
+    direct_or_diffuse_available = out["direct_rad_wm2"].notna() | out["diffuse_rad_wm2"].notna()
+    out.loc[global_missing & direct_or_diffuse_available, "global_rad_wm2"] = (
+        out.loc[global_missing & direct_or_diffuse_available, ["direct_rad_wm2", "diffuse_rad_wm2"]]
+        .fillna(0.0)
+        .sum(axis=1)
+    )
+
+    for col in ("diffuse_rad_wm2", "direct_rad_wm2"):
+        if out[col].notna().sum() == 0 and out["global_rad_wm2"].notna().sum() > 0:
+            out[col] = 0.0
+
+    low_global = available_global & (out["global_rad_wm2"] <= 5)
+    for col in ("diffuse_rad_wm2", "direct_rad_wm2"):
+        out.loc[low_global & out[col].isna(), col] = 0.0
+
+    unusable = [col for col in RADIATION_VALUE_COLUMNS if out[col].notna().sum() == 0]
+    if unusable:
+        raise ValueError(f"Radiation file has no usable numeric values in required columns: {unusable}")
+
+    for col in RADIATION_VALUE_COLUMNS:
+        out[col] = out[col].clip(lower=0)
     return out
 
 
@@ -479,7 +651,7 @@ def _read_time_keyed_manual_file(path_like: str | Path, *, label: str) -> tuple[
     if not path.exists():
         raise FileNotFoundError(f"{label} not found: {path}")
 
-    manual = read_csv(path)
+    manual = read_table(path, label=label)
     if "timestamp" not in manual.columns:
         raise ValueError(f"{label} must contain a timestamp column")
 
@@ -1199,12 +1371,12 @@ def run_pipeline(
     weather_path = resolve_path(weather_file)
     radiation_path = resolve_path(radiation_file)
     if not weather_path.exists():
-        raise FileNotFoundError(f"Bet Dagan weather file not found: {weather_path}")
+        raise FileNotFoundError(f"Weather file not found: {weather_path}")
     if not radiation_path.exists():
-        raise FileNotFoundError(f"Bet Dagan radiation file not found: {radiation_path}")
+        raise FileNotFoundError(f"Radiation file not found: {radiation_path}")
 
-    weather = read_csv(weather_path)
-    radiation = read_csv(radiation_path)
+    weather = read_table(weather_path, label="Weather file")
+    radiation = read_table(radiation_path, label="Radiation file")
     model_frame = engineer_micro_climate_features(
         weather,
         radiation,
@@ -1311,7 +1483,7 @@ def print_pipeline_result(result: dict) -> None:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Build master-format rootzone inputs from Bet Dagan files and run the no-RH rootzone model.")
+    parser = argparse.ArgumentParser(description="Build master-format rootzone inputs from weather/radiation files and run the no-RH rootzone model.")
     parser.add_argument("--weather-file", required=True)
     parser.add_argument("--radiation-file", required=True)
     parser.add_argument("--micro-model-file", default=None)

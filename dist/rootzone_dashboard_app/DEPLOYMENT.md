@@ -10,7 +10,7 @@ This folder is the portable dashboard package. It contains the app code, saved m
 scripts/rootzone_full_etl_pipeline
 ```
 
-2. On the other computer, install Python 3.11 or newer.
+2. On the other computer, install Python 3.12.
 3. Double-click:
 
 ```text
@@ -46,7 +46,7 @@ Without compose:
 
 ```bash
 docker build -t rootzone-dashboard .
-docker run --rm -p 8765:8765 rootzone-dashboard
+docker run --rm -p 8765:7860 rootzone-dashboard
 ```
 
 ## Deploy On Hugging Face Spaces
@@ -65,6 +65,8 @@ Hugging Face Docker Spaces expect the app to listen on port `7860`. The included
 HOST=0.0.0.0
 PORT=7860
 ```
+
+The Docker image uses Python 3.12, matching the Python version used when the final model was built.
 
 You do not need to create the example FastAPI files shown by Hugging Face. That is only their default starter example.
 

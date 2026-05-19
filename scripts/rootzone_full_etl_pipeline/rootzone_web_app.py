@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import cgi
 import json
 import mimetypes
 import os
@@ -10,15 +9,24 @@ import shutil
 import traceback
 import uuid
 from datetime import datetime
+from email import policy as email_policy
+from email.parser import BytesParser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import numpy as np
 import pandas as pd
 
+try:
+    import cgi
+except ModuleNotFoundError:
+    cgi = None
+
 from rootzone_full_etl import (
     EVENT_COLUMNS,
+    SUPPORTED_UPLOAD_EXTENSIONS,
     predict_rootzone_from_master,
     run_pipeline,
 )
@@ -36,6 +44,11 @@ DOWNLOAD_FILES = {
     "prediction": "etl_rootzone_prediction.csv",
     "events": "rootzone_events_input.csv",
     "anchors": "rootzone_anchor_input.csv",
+}
+
+UPLOAD_FIELD_LABELS = {
+    "weather_file": "Weather file",
+    "radiation_file": "Radiation file",
 }
 
 DEFAULT_PRESETS = {
@@ -71,6 +84,24 @@ DEFAULT_PRESETS = {
 }
 
 
+class ParsedFormItem:
+    def __init__(self, *, value: str = "", filename: str = "", data: bytes = b"") -> None:
+        self.value = value
+        self.filename = filename
+        self.file = BytesIO(data)
+
+
+class ParsedForm(dict):
+    def add(self, name: str, item: ParsedFormItem) -> None:
+        current = self.get(name)
+        if current is None:
+            self[name] = item
+        elif isinstance(current, list):
+            current.append(item)
+        else:
+            self[name] = [current, item]
+
+
 def load_presets() -> dict:
     if not PRESETS_FILE.exists():
         PRESETS_FILE.write_text(json.dumps(DEFAULT_PRESETS, indent=2), encoding="utf-8")
@@ -82,9 +113,9 @@ def load_presets() -> dict:
 
 
 def safe_filename(name: str) -> str:
-    name = Path(name or "upload.csv").name
+    name = Path(name or "upload").name
     name = re.sub(r"[^A-Za-z0-9_. -]+", "_", name).strip(" .")
-    return name or "upload.csv"
+    return name or "upload"
 
 
 def json_default(value):
@@ -138,6 +169,41 @@ def add_cors_headers(handler: BaseHTTPRequestHandler) -> None:
     handler.send_header("Access-Control-Allow-Headers", "Content-Type")
 
 
+def parse_multipart_form(handler: BaseHTTPRequestHandler):
+    if cgi is not None:
+        return cgi.FieldStorage(
+            fp=handler.rfile,
+            headers=handler.headers,
+            environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": handler.headers.get("Content-Type", "")},
+        )
+
+    content_type = handler.headers.get("Content-Type", "")
+    if "multipart/form-data" not in content_type.lower():
+        raise ValueError("Expected multipart/form-data upload")
+    content_length = int(handler.headers.get("Content-Length", "0"))
+    body = handler.rfile.read(content_length)
+    message_bytes = (
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8") + body
+    )
+    message = BytesParser(policy=email_policy.default).parsebytes(message_bytes)
+    form = ParsedForm()
+    for part in message.iter_parts():
+        if part.get_content_disposition() != "form-data":
+            continue
+        name = part.get_param("name", header="content-disposition")
+        if not name:
+            continue
+        filename = part.get_filename() or ""
+        payload = part.get_payload(decode=True) or b""
+        if filename:
+            form.add(name, ParsedFormItem(filename=filename, data=payload))
+        else:
+            charset = part.get_content_charset() or "utf-8"
+            value = payload.decode(charset, errors="replace")
+            form.add(name, ParsedFormItem(value=value, data=payload))
+    return form
+
+
 def form_value(form: cgi.FieldStorage, name: str, default: str | None = None) -> str | None:
     if name not in form:
         return default
@@ -163,7 +229,14 @@ def save_upload(form: cgi.FieldStorage, field: str, run_dir: Path) -> Path:
     if not getattr(item, "filename", ""):
         raise ValueError(f"No file was uploaded for {field}")
 
-    path = run_dir / safe_filename(item.filename)
+    filename = safe_filename(item.filename)
+    ext = Path(filename).suffix.lower()
+    if ext not in SUPPORTED_UPLOAD_EXTENSIONS:
+        allowed = ", ".join(sorted(SUPPORTED_UPLOAD_EXTENSIONS))
+        label = UPLOAD_FIELD_LABELS.get(field, field)
+        raise ValueError(f"{label} must be CSV, Excel, or JSON format ({allowed}).")
+
+    path = run_dir / filename
     with path.open("wb") as out:
         shutil.copyfileobj(item.file, out)
     return path
@@ -270,7 +343,14 @@ def validate_prediction_inputs(
     event_window_start = anchor_ts - pd.Timedelta(hours=EVENT_WINDOW_H)
     bad_events = []
     for i, ev in enumerate(events):
-        ev_ts = pd.Timestamp(ev.get("time", ""))
+        try:
+            ev_ts = pd.Timestamp(ev.get("time", ""))
+        except Exception:
+            bad_events.append(f"  Event {i + 1} has an invalid timestamp.")
+            continue
+        if pd.isna(ev_ts):
+            bad_events.append(f"  Event {i + 1} has an invalid timestamp.")
+            continue
         if ev_ts > target_ts:
             bad_events.append(
                 f"  Event {i + 1} at {ev_ts:%Y-%m-%d %H:%M} is after the target time "
@@ -420,6 +500,14 @@ def handle_prediction(payload: dict) -> dict:
     if canopy_cover is not None:
         master["canopy_cover"] = canopy_cover
 
+    planting_date = payload.get("planting_date")
+    if planting_date:
+        planted = pd.Timestamp(planting_date).normalize()
+        if pd.isna(planted):
+            raise ValueError("Planting date could not be parsed")
+        days = (master["timestamp"].dt.normalize() - planted).dt.total_seconds() / 86400.0
+        master["days_after_planting"] = np.clip(days, 0, None)
+
     days_after_planting = parse_optional_float(payload.get("days_after_planting"))
     if days_after_planting is not None:
         master["days_after_planting"] = days_after_planting
@@ -543,11 +631,7 @@ class RootzoneHandler(BaseHTTPRequestHandler):
         try:
             path = urlparse(self.path).path
             if path == "/api/forecast":
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")},
-                )
+                form = parse_multipart_form(self)
                 json_response(self, handle_forecast(form))
                 return
             if path == "/api/predict":

@@ -14,7 +14,7 @@ This folder is the portable dashboard package for the rootzone pH/EC prediction 
 
 The dashboard lets a user:
 
-1. Upload Bet Dagan weather and radiation CSV files.
+1. Upload weather and radiation files in CSV, Excel, or JSON format.
 2. Create a downloadable micro-climate/weather prediction CSV.
 3. Enter current pH/EC status and timestamp.
 4. Add irrigation, gypsum, Kortin, and type A/B fertilizer events using dose presets.
@@ -56,6 +56,8 @@ run_windows.bat
 
 The first run creates a local `.venv` folder and installs the required packages. Later runs are faster.
 
+Use Python 3.12 on Windows. The final model was built with Python 3.12.13 and `scikit-learn==1.7.1`; Python 3.14 is not compatible with these pinned model packages on Windows.
+
 ## Run On Mac Or Linux
 
 ```bash
@@ -84,6 +86,7 @@ Use:
 - Hardware: Free CPU
 
 Upload the package files to the Space. The included `Dockerfile` already listens on Hugging Face's required port `7860`.
+The Docker image uses Python 3.12 to match the model-building environment.
 
 Ignore the example FastAPI instructions shown by Hugging Face; they are only a generic starter guide.
 

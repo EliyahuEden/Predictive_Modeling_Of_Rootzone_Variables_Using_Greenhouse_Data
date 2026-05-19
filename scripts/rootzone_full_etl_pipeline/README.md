@@ -14,7 +14,7 @@ This folder is the portable dashboard package for the rootzone pH/EC prediction 
 
 The dashboard lets a user:
 
-1. Upload Bet Dagan weather and radiation CSV files.
+1. Upload weather and radiation files in CSV, Excel, or JSON format.
 2. Create a downloadable micro-climate/weather prediction CSV.
 3. Enter current pH/EC status and timestamp.
 4. Add irrigation, gypsum, Kortin, and type A/B fertilizer events using dose presets.
@@ -56,6 +56,8 @@ run_windows.bat
 
 The first run creates a local `.venv` folder and installs the required packages. Later runs are faster.
 
+Use Python 3.12 on Windows. The final model was built with Python 3.12.13 and `scikit-learn==1.7.1`; Python 3.14 is not compatible with these pinned model packages on Windows.
+
 ## Run On Mac Or Linux
 
 ```bash
@@ -87,12 +89,12 @@ pip install -r requirements.txt
 
 ### 2. Build the master CSV and micro-climate forecast
 
-Run this first to generate the editable input templates from your Bet Dagan files:
+Run this first to generate the editable input templates from your weather and radiation files:
 
 ```bash
 python rootzone_full_etl.py \
-  --weather-file bet_dagan_weather.csv \
-  --radiation-file bet_dagan_radiation.csv \
+  --weather-file weather.xlsx \
+  --radiation-file radiation.json \
   --no-rootzone
 ```
 
@@ -115,8 +117,8 @@ Once the templates are filled in, run the full pipeline with your anchor and tar
 
 ```bash
 python rootzone_full_etl.py \
-  --weather-file bet_dagan_weather.csv \
-  --radiation-file bet_dagan_radiation.csv \
+  --weather-file weather.xlsx \
+  --radiation-file radiation.json \
   --events-file etl_events_template.csv \
   --anchors-file etl_anchors_template.csv \
   --anchor-time "2025-09-21 06:30" \
@@ -132,8 +134,8 @@ Output: `etl_rootzone_prediction.csv`
 
 | Argument | Required | Description |
 |---|---|---|
-| `--weather-file` | Yes | Path to Bet Dagan weather CSV |
-| `--radiation-file` | Yes | Path to Bet Dagan radiation CSV |
+| `--weather-file` | Yes | Path to weather CSV, Excel, or JSON |
+| `--radiation-file` | Yes | Path to radiation CSV, Excel, or JSON |
 | `--anchor-time` | Recommended | Current measurement time (`"YYYY-MM-DD HH:MM"`) |
 | `--target-time` | Recommended | Prediction target time (`"YYYY-MM-DD HH:MM"`) |
 | `--planting-date` | Recommended | Crop planting date (`"YYYY-MM-DD"`) |
@@ -155,6 +157,7 @@ Use:
 - Hardware: Free CPU
 
 Upload the package files to the Space. The included `Dockerfile` already listens on Hugging Face's required port `7860`.
+The Docker image uses Python 3.12 to match the model-building environment.
 
 Ignore the example FastAPI instructions shown by Hugging Face; they are only a generic starter guide.
 

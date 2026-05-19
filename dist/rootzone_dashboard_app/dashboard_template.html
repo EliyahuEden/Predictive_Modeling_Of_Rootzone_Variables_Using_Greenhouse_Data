@@ -361,6 +361,10 @@
       grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
       gap: 18px;
     }
+    .input-stack {
+      display: grid;
+      gap: 18px;
+    }
     .field-block {
       display: grid;
       gap: 14px;
@@ -460,6 +464,40 @@
     }
     .hidden { display: none !important; }
     .mono { font-family: Consolas, monospace; }
+    .alert-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(23, 32, 38, .38);
+    }
+    .alert-card {
+      width: min(520px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--red);
+      border-radius: 8px;
+      box-shadow: 0 24px 70px rgba(23, 32, 38, .22);
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+    .alert-card.warn {
+      border-top-color: var(--amber);
+    }
+    .alert-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    .alert-message {
+      color: var(--soft-ink);
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
     @media (max-width: 1020px) {
       .dashboard {
         grid-template-columns: 1fr;
@@ -520,6 +558,16 @@
     </div>
   </header>
 
+  <div id="alertOverlay" class="alert-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
+    <div id="alertCard" class="alert-card">
+      <div id="alertTitle" class="alert-title">Input problem</div>
+      <div id="alertMessage" class="alert-message"></div>
+      <div class="actions">
+        <button type="button" id="alertClose">Close</button>
+      </div>
+    </div>
+  </div>
+
   <main class="dashboard">
     <aside class="rail">
       <section class="side-panel">
@@ -535,7 +583,7 @@
       <section class="side-panel">
         <div class="side-title">Run Summary</div>
         <div class="summary-list">
-          <div class="summary-row"><span>Run</span><strong id="summaryRun">Not started</strong></div>
+          <div class="summary-row"><span>Forecast status</span><strong id="summaryRun">Not started</strong></div>
           <div class="summary-row"><span>Forecast rows</span><strong id="summaryRows">-</strong></div>
           <div class="summary-row"><span>Range</span><strong id="summaryRange">-</strong></div>
           <div class="summary-row"><span>Events</span><strong id="summaryEvents">0</strong></div>
@@ -549,28 +597,22 @@
         <div class="panel-title">
           <div>
             <h2>Weather Inputs</h2>
-            <p>Upload the external weather and radiation files used to generate the greenhouse micro-climate forecast.</p>
+            <p>Upload the external weather and radiation files used to generate the greenhouse micro-climate forecast. Supported formats are CSV, Excel, and JSON.</p>
           </div>
           <div id="forecastStatus" class="status">Ready</div>
         </div>
         <form id="forecastForm" class="grid">
-          <label class="span-6">Bet Dagan weather CSV
-            <input name="weather_file" type="file" accept=".csv" required>
+          <label class="span-6">Weather file
+            <input name="weather_file" type="file" accept=".csv,.xlsx,.xls,.json" required>
           </label>
-          <label class="span-6">Bet Dagan radiation CSV
-            <input name="radiation_file" type="file" accept=".csv" required>
+          <label class="span-6">Radiation file
+            <input name="radiation_file" type="file" accept=".csv,.xlsx,.xls,.json" required>
           </label>
           <label class="span-3">Start time
             <input name="start_time" type="datetime-local">
           </label>
           <label class="span-3">End time
             <input name="end_time" type="datetime-local">
-          </label>
-          <label class="span-3">Planting date
-            <input name="planting_date" type="date">
-          </label>
-          <label class="span-3">Canopy cover
-            <input name="canopy_cover_default" type="number" min="0" max="1" step="0.001" value="0">
           </label>
           <div class="span-12 actions">
             <button type="submit" id="runForecast">Create weather prediction</button>
@@ -603,43 +645,46 @@
         <div class="panel-title">
           <div>
             <h2>Rootzone Inputs</h2>
-            <p>Enter the current measured pH/EC status and all irrigation and fertilizer events that occurred in the <strong>48 h before the anchor time</strong>. The weather data must also cover at least <strong>6 h before the anchor time</strong>.</p>
+            <p>Enter the current measured pH/EC status and every irrigation, fertilizer, gypsum, and Kortin event that occurred in the <strong>48 h before the anchor time</strong>. These before-t0 events are required context for accurate model prediction. If no events occurred, leave the event list empty.</p>
           </div>
           <div id="eventStatus" class="status">No events added</div>
         </div>
 
-        <div class="split">
+        <div class="input-stack">
           <div class="field-block">
             <div class="block-heading">Current Status</div>
             <div class="grid">
-              <label class="span-4">Measurement time
+              <label class="span-3">Measurement time
                 <input id="anchorTime" type="datetime-local" required>
               </label>
-              <label class="span-2">Current pH
+              <label class="span-3">Current pH
                 <input id="anchorPh" type="number" step="0.001" required>
               </label>
-              <label class="span-2">Current EC
+              <label class="span-3">Current EC
                 <input id="anchorEc" type="number" step="0.0001" required>
               </label>
-              <label class="span-4">Prediction time
+              <label class="span-3">Prediction time
                 <input id="targetTime" type="datetime-local" required>
               </label>
-              <label class="span-3">DAP override
-                <input id="dapOverride" type="number" step="1">
+              <label class="span-3">Planting date
+                <input id="plantingDate" type="date">
+              </label>
+              <label class="span-3">Canopy cover
+                <input id="canopyCover" type="number" min="0" max="1" step="0.001" value="0">
               </label>
             </div>
           </div>
 
           <div class="field-block">
             <div class="block-heading">Add Event</div>
-            <label>Event time
-              <input id="eventTime" type="datetime-local">
-            </label>
             <div class="grid">
-              <label class="span-6">Irrigation ml
+              <label class="span-4">Event time
+                <input id="eventTime" type="datetime-local">
+              </label>
+              <label class="span-4">Irrigation ml
                 <input id="irrigationMl" type="number" min="0" step="1" value="0">
               </label>
-              <label class="span-6">Fertilizer
+              <label class="span-4">Fertilizer
                 <select id="fertType">
                   <option value="none">None</option>
                   <option value="A">Type A</option>
@@ -727,6 +772,7 @@
       EVENT_WINDOW_H: 48,
     };
     const $ = (id) => document.getElementById(id);
+    const ALLOWED_UPLOAD_EXTENSIONS = ['.csv', '.xlsx', '.xls', '.json'];
 
     // ── Helpers ────────────────────────────────────────────────────────────────
     function apiUrl(path) {
@@ -739,6 +785,26 @@
       const el = $(id);
       el.textContent = text;
       el.className = 'status ' + kind;
+    }
+
+    function showAlert(title, message, kind = 'bad') {
+      $('alertTitle').textContent = title;
+      $('alertMessage').textContent = message;
+      $('alertCard').className = `alert-card ${kind === 'warn' ? 'warn' : ''}`;
+      $('alertOverlay').classList.remove('hidden');
+    }
+
+    function hideAlert() {
+      $('alertOverlay').classList.add('hidden');
+    }
+
+    function validateUploadInput(input, label) {
+      const file = input && input.files && input.files[0];
+      if (!file) return `${label} is required.`;
+      const lower = file.name.toLowerCase();
+      const ok = ALLOWED_UPLOAD_EXTENSIONS.some(ext => lower.endsWith(ext));
+      if (!ok) return `${label} must be CSV, Excel, or JSON format (${ALLOWED_UPLOAD_EXTENSIONS.join(', ')}).`;
+      return '';
     }
 
     function setStep(id, mode) {
@@ -862,13 +928,12 @@
       // Advisory: no events in the full window (anchor−48h → target)
       if (issues.length === 0 && anchorDate) {
         const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
-        const windowEnd   = targetDate || anchorDate;
-        const windowEvents = state.events.filter(ev => {
+        const beforeAnchorEvents = state.events.filter(ev => {
           const d = asDate(ev.time);
-          return d && d >= windowStart && d <= windowEnd;
+          return d && d >= windowStart && d <= anchorDate;
         });
-        if (windowEvents.length === 0)
-          issues.push({ kind: 'warn', text: `No irrigation or fertilizer events in the ${state.EVENT_WINDOW_H}-h window before anchor. If events occurred, add them for accurate predictions.` });
+        if (beforeAnchorEvents.length === 0)
+          issues.push({ kind: 'warn', text: `No before-t0 irrigation or fertilizer events were entered for the ${state.EVENT_WINDOW_H}-h window before anchor. The model uses these events as context; if events occurred, add them before predicting.` });
       }
 
       return issues;
@@ -903,18 +968,17 @@
         rows.push({ ok, text: `Target within weather data: ${ok ? 'Yes' : `No — weather ends ${prettyTime(state.timestampMax)}`}` });
       }
 
-      // Events in window
+      // Before-t0 events in the historical feature window
       if (anchorDate) {
         const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
-        const windowEnd   = targetDate || anchorDate;
-        const count = state.events.filter(ev => {
+        const beforeAnchorCount = state.events.filter(ev => {
           const d = asDate(ev.time);
-          return d && d >= windowStart && d <= windowEnd && eventValidation(ev).kind !== 'bad';
+          return d && d >= windowStart && d <= anchorDate && eventValidation(ev).kind !== 'bad';
         }).length;
         rows.push({
-          ok: count > 0,
-          warn: count === 0,
-          text: `Events in window (${state.EVENT_WINDOW_H}h before anchor → target): ${count} (add irrigation/fert events for better accuracy)`
+          ok: beforeAnchorCount > 0,
+          warn: beforeAnchorCount === 0,
+          text: `Before-t0 events entered (${state.EVENT_WINDOW_H}h before anchor): ${beforeAnchorCount} (required context if irrigation/fertilizer occurred)`
         });
       }
 
@@ -939,7 +1003,7 @@
 
     // ── Summary sidebar ───────────────────────────────────────────────────────
     function updateSummary() {
-      $('summaryRun').textContent = state.runId ? state.runId.split('_').slice(-1)[0] : 'Not started';
+      $('summaryRun').textContent = state.runId ? 'Ready for rootzone' : 'Not started';
       $('summaryRows').textContent = state.forecastRows ? Number(state.forecastRows).toLocaleString() : '-';
       $('summaryRange').textContent = state.timestampMin && state.timestampMax
         ? `${prettyTime(state.timestampMin)} → ${prettyTime(state.timestampMax)}`
@@ -1001,7 +1065,12 @@
       }
     });
 
-    ['anchorTime', 'targetTime'].forEach(id => {
+    $('alertClose').addEventListener('click', hideAlert);
+    $('alertOverlay').addEventListener('click', (event) => {
+      if (event.target === $('alertOverlay')) hideAlert();
+    });
+
+    ['anchorTime', 'targetTime', 'plantingDate', 'canopyCover'].forEach(id => {
       $(id).addEventListener('change', () => {
         renderEvents();
         updateSummary();
@@ -1011,6 +1080,13 @@
     // ── Step 1: Forecast form ─────────────────────────────────────────────────
     $('forecastForm').addEventListener('submit', async (event) => {
       event.preventDefault();
+      const uploadIssue = validateUploadInput(event.target.weather_file, 'Weather file') ||
+        validateUploadInput(event.target.radiation_file, 'Radiation file');
+      if (uploadIssue) {
+        setStatus('forecastStatus', uploadIssue, 'bad');
+        showAlert('Unsupported file type', uploadIssue);
+        return;
+      }
       setStatus('forecastStatus', 'Running forecast...');
       $('runForecast').disabled = true;
       try {
@@ -1024,7 +1100,7 @@
         state.timestampMax   = data.timestamp_max;
         state.forecastRows   = data.forecast_rows;
 
-        $('runId').textContent = `Run ${data.run_id}`;
+        $('runId').textContent = 'Forecast session ready';
         $('forecastPanel').classList.remove('hidden');
         $('rootzonePanel').classList.remove('hidden');
         $('forecastDownload').href = apiUrl(data.downloads.forecast);
@@ -1049,6 +1125,7 @@
         renderEvents();
       } catch (err) {
         setStatus('forecastStatus', err.message, 'bad');
+        showAlert('Forecast could not run', err.message);
       } finally {
         $('runForecast').disabled = false;
       }
@@ -1067,15 +1144,18 @@
 
       if (!eventRow.time) {
         setStatus('eventStatus', 'Event time is required', 'bad');
+        showAlert('Event time required', 'Add the time for this irrigation or fertilizer event before saving it.');
         return;
       }
       if (!eventHasValue(eventRow)) {
         setStatus('eventStatus', 'Add irrigation, fertilizer, gypsum, or Kortin before saving the event', 'bad');
+        showAlert('Event details required', 'Add irrigation, fertilizer, gypsum, or Kortin before saving the event.');
         return;
       }
       const validation = eventValidation(eventRow);
       if (validation.kind === 'bad') {
         setStatus('eventStatus', validation.text, 'bad');
+        showAlert('Event outside valid range', validation.text);
         return;
       }
       state.events.push(eventRow);
@@ -1090,6 +1170,7 @@
       // Run pre-flight checks and show any issues
       const issues = preflightChecks();
       const errors = issues.filter(i => i.kind === 'error');
+      const warnings = issues.filter(i => i.kind === 'warn');
 
       if (errors.length) {
         // Render all errors in the status area
@@ -1097,8 +1178,12 @@
           `<div style="color:var(--red);font-size:13px;margin-bottom:4px;">⚠ ${e.text}</div>`
         ).join('');
         $('predictStatus').className = 'status bad';
+        showAlert('Prediction inputs need attention', errors.map(e => e.text).join('\n'));
         renderEvents();
         return;
+      }
+      if (warnings.length) {
+        showAlert('Check before-t0 events', warnings.map(w => w.text).join('\n'), 'warn');
       }
 
       setStatus('predictStatus', 'Running prediction...');
@@ -1110,7 +1195,8 @@
           anchor_ph:          $('anchorPh').value,
           anchor_ec:          $('anchorEc').value,
           target_time:        $('targetTime').value,
-          days_after_planting: $('dapOverride').value,
+          planting_date:      $('plantingDate').value,
+          canopy_cover:       $('canopyCover').value,
           events:             state.events,
         };
         const response = await fetch(apiUrl('/api/predict'), {
@@ -1136,6 +1222,7 @@
         setStep('stepResult', 'done');
       } catch (err) {
         setStatus('predictStatus', err.message, 'bad');
+        showAlert('Prediction could not run', err.message);
       } finally {
         $('predictButton').disabled = false;
       }
