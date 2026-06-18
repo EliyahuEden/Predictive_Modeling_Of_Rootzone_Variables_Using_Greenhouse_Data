@@ -20,13 +20,12 @@ IO_FILL   = "#FFFFFF"
 OUT_FILL  = "#4F5E26"
 ARROW     = "#6B7C3A"
 
-# ----- fonts (pushed to the width cap; iterate here) -----
-HFS = 22    # box heading
-SFS = 18    # algorithm sub-label (italic)
 TFS = 31    # title
 RS  = 2.2   # corner rounding
 LW  = 3.2   # box border
-PADF = 0.12 # vertical padding fraction for head+sub boxes
+FILLW = 0.92 # target fraction of each box width occupied by text
+FILLH = 0.88 # target fraction of each box height occupied by text
+LS = 1.02    # line spacing
 
 fig = plt.figure(figsize=(15.0, 5.8), dpi=200)
 fig.patch.set_facecolor(PAGE)
@@ -37,25 +36,62 @@ ax.set_ylim(0, 58)
 ax.set_aspect("equal")
 ax.axis("off")
 
+fig.canvas.draw()
+RENDERER = fig.canvas.get_renderer()
+_origin = ax.transData.transform((0, 0))
+_one_x = ax.transData.transform((1, 0))
+_one_y = ax.transData.transform((0, 1))
+PPDX = _one_x[0] - _origin[0]
+PPDY = _one_y[1] - _origin[1]
 
-def box(x, y, w, h, head, sub, fc, ec, tc, fs=HFS, subfs=SFS, lw=LW):
+
+def box(x, y, w, h, head, sub, fc, ec, tc, lw=LW):
     ax.add_patch(FancyBboxPatch(
         (x, y), w, h,
         boxstyle=f"round,pad=0,rounding_size={RS}",
         linewidth=lw, edgecolor=ec, facecolor=fc,
         mutation_aspect=1.0, zorder=3))
     cx = x + w / 2.0
+    cy = y + h / 2.0
     if sub:
-        ax.text(cx, y + h - h * PADF, head, ha="center", va="top",
-                fontsize=fs, color=tc, fontweight="bold",
-                linespacing=1.02, zorder=4)
-        ax.text(cx, y + h * PADF, sub, ha="center", va="bottom",
-                fontsize=subfs, color=tc, style="italic",
-                linespacing=1.02, zorder=4)
+        head_base = 20.0
+        sub_base = 15.5
+        head_text = ax.text(cx, cy, head, ha="center", va="center",
+                            fontsize=head_base, color=tc, fontweight="bold",
+                            linespacing=LS, zorder=4)
+        sub_text = ax.text(cx, cy, sub, ha="center", va="center",
+                           fontsize=sub_base, color=tc, style="italic",
+                           fontweight="bold", linespacing=LS, zorder=4)
+
+        head_extent = head_text.get_window_extent(RENDERER)
+        sub_extent = sub_text.get_window_extent(RENDERER)
+        gap_px = 0.055 * h * PPDY
+        combined_w = max(head_extent.width, sub_extent.width)
+        combined_h = head_extent.height + sub_extent.height + gap_px
+        scale = min(w * PPDX * FILLW / combined_w,
+                    h * PPDY * FILLH / combined_h)
+
+        head_text.set_fontsize(head_base * scale)
+        sub_text.set_fontsize(sub_base * scale)
+        head_extent = head_text.get_window_extent(RENDERER)
+        sub_extent = sub_text.get_window_extent(RENDERER)
+        head_h = head_extent.height / PPDY
+        sub_h = sub_extent.height / PPDY
+        gap = gap_px / PPDY
+        total_h = head_h + sub_h + gap
+        top = cy + total_h / 2.0
+        head_text.set_position((cx, top))
+        head_text.set_va("top")
+        sub_text.set_position((cx, top - head_h - gap))
+        sub_text.set_va("top")
     else:
-        ax.text(cx, y + h / 2.0, head, ha="center", va="center",
-                fontsize=fs, color=tc, fontweight="bold",
-                linespacing=1.02, zorder=4)
+        text = ax.text(cx, cy, head, ha="center", va="center",
+                       fontsize=20.0, color=tc, fontweight="bold",
+                       linespacing=LS, zorder=4)
+        extent = text.get_window_extent(RENDERER)
+        scale = min(w * PPDX * FILLW / extent.width,
+                    h * PPDY * FILLH / extent.height)
+        text.set_fontsize(20.0 * scale)
 
 
 def harrow(x0, x1, y):
