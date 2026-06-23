@@ -64,16 +64,6 @@ Supporting packages used in parts of the project:
 - LightGBM
 - SHAP
 - Open-Meteo client packages
-- requests-cache
-- retry-requests
-
-Not used in the current project:
-
-- SQL or PostgreSQL
-- Power BI
-- Airflow
-- Docker
-- FastAPI
 
 ## Project structure
 
@@ -129,13 +119,10 @@ The project is built as a staged modeling workflow.
 5. **Train unified pH and EC model**
    The final root-zone model is a unified multi-output model that predicts both pH change and EC log-change from the same rows and the same feature set.
 
-6. **Add event correction**
-   A Huber regression component is used for short, high-impact acid or salt events. The blend is shared and kept at `1.0`, so when the event gate is active the correction fully replaces the XGBoost prediction for that interval.
-
-7. **Validate with walk-forward testing**
+6. **Validate with walk-forward testing**
    The model is evaluated using walk-forward validation. Training grows through time, and predictions are made only using information available up to the prediction point.
 
-8. **Validate with skipped-interval holdout**
+7. **Validate with skipped-interval holdout**
    Separate holdout intervals are removed from training and predicted later. The project includes both 24h and 48h holdout versions.
 
 ## Key metrics
@@ -189,12 +176,6 @@ Main findings:
 - The 24h model keeps the best pH walk-forward score, but the 48h model has better pH holdout MAE.
 - The EC warmup-30 stress check remains important because early August intervals are sensitive to which skipped rows are removed from training.
 
-Recommended action:
-
-- Use the 48h unified model when the priority is realistic holdout behavior and stronger EC generalization.
-- Keep the 24h model as a benchmark for pH walk-forward behavior.
-- Treat the model as a decision-support soft sensor, not as an autonomous fertigation controller.
-
 ## How to run
 
 The repository does not yet include a pinned `requirements.txt` or `environment.yml`.
@@ -233,7 +214,7 @@ scripts/saved_model/v8_unified_model_48h_shared_model.joblib
 scripts/saved_model/v8_unified_model_48h_model_meta.json
 ```
 
-## Screenshots or demo
+## plots
 
 Model architecture:
 
@@ -275,31 +256,3 @@ Walk-forward workflow:
 
 ![48h holdout EC actual vs predicted](plots/PH%26%20EC_Results_48H_Version/HOLDOUT_EC/48h_holdout_ec_actual_vs_predicted.png)
 
-Project presentation:
-
-```text
-rootzone presentation/rootzone_presentation.html
-```
-
-## Limitations
-
-This is a research and modeling repository, not a production service.
-
-Current limitations:
-
-- The workflow is notebook-first, not packaged as reusable Python modules.
-- There is no pinned dependency file yet.
-- There is no automated end-to-end rebuild script.
-- The root-zone labels are sparse: only 109 pH/EC labeled timestamps are available.
-- Holdout evaluation is based on skipped intervals from the same experiment timeline, not a future greenhouse season.
-- The model does not yet include live data ingestion, monitoring, retraining automation, or an API.
-- pH and EC predictions should be reviewed by an agronomist before operational use.
-
-## Role relevance
-
-This project is relevant for several data roles:
-
-- **Data Analyst:** combines multiple messy data sources, validates trends, builds interpretable metrics, and communicates model results with plots and summaries.
-- **Data Engineer:** demonstrates data ingestion, timeline alignment, feature creation, processed dataset handoffs, and reproducible export artifacts.
-- **Data Scientist:** builds supervised models under sparse-label constraints, compares baselines, engineers domain features, and validates with walk-forward and holdout testing.
-- **ML Engineer:** includes serialized model artifacts, metadata, feature lists, validation outputs, and a path toward a production soft-sensor service.
