@@ -119,7 +119,7 @@ cy = MY + MH / 2.0
 # main pipeline boxes (short wrapped lines so the font can be large)
 box(xs[0], MY, WB, MH, "External\nweather &\nradiation", None,
     IO_FILL, OLIVE_DK, DEEP)
-box(xs[1], MY, WB, MH, "Stage 1\nMicro-climate\nmodel", "LightGBM",
+box(xs[1], MY, WB, MH, "Stage 1\nMicroclimate\nmodel", "LightGBM",
     SAGE_FILL, OLIVE, DEEP)
 box(xs[2], MY, WB, MH, "Internal\ngreenhouse\nclimate", None,
     IO_FILL, OLIVE_DK, DEEP)
@@ -140,7 +140,7 @@ sa_x = s2c - GAP / 2.0 - SW
 sb_x = s2c + GAP / 2.0
 box(sa_x, SY, SW, SH, "Irrigation &\nfertigation", None,
     IO_FILL, OLIVE_DK, DEEP)
-box(sb_x, SY, SW, SH, "Crop state ·\nlast pH / EC", None,
+box(sb_x, SY, SW, SH, "Crop state +\nlast pH / EC", None,
     IO_FILL, OLIVE_DK, DEEP)
 
 # upward arrows into Stage 2 bottom (slight inward angle, like reference)

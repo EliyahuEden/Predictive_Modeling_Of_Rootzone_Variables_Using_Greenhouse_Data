@@ -65,17 +65,19 @@ def make_walk_forward():
         color=DEEP,
     )
 
+    # Walk-forward: each training window grows by exactly one test fold, so a
+    # given Test block ends precisely where the next (lower) Train block ends.
     rows = [
         (103, 82, 405, 137),
-        (103, 228, 520, 137),
-        (103, 374, 640, 137),
-        (103, 519, 758, 137),
+        (103, 228, 523, 137),
+        (103, 374, 641, 137),
+        (103, 519, 759, 137),
     ]
     tests = [
-        (508, 82, 136, 137),
-        (623, 228, 136, 137),
-        (743, 374, 136, 137),
-        (860, 519, 136, 137),
+        (508, 82, 118, 137),
+        (626, 228, 118, 137),
+        (744, 374, 118, 137),
+        (862, 519, 118, 137),
     ]
     for i, (x, y, w, h) in enumerate(rows, start=1):
         ax.add_patch(
@@ -120,7 +122,7 @@ def make_walk_forward():
             color=DEEP,
         )
 
-    legend_x = 820
+    legend_x = 770
     ax.add_patch(
         FancyBboxPatch(
             (legend_x, 91),
@@ -141,8 +143,8 @@ def make_walk_forward():
             facecolor=GOLD,
         )
     )
-    ax.text(891, 115, "Train (past)", va="center", fontsize=25, fontweight="bold", color=DEEP)
-    ax.text(891, 181, "Test (future)", va="center", fontsize=25, fontweight="bold", color=DEEP)
+    ax.text(841, 115, "Training window (past)", va="center", fontsize=18, fontweight="bold", color=DEEP)
+    ax.text(841, 181, "Prediction target (future)", va="center", fontsize=18, fontweight="bold", color=DEEP)
 
     ax.add_patch(
         FancyArrowPatch(
@@ -155,7 +157,7 @@ def make_walk_forward():
         )
     )
     ax.text(615, 711, "Time →", ha="center", va="center", fontsize=27, fontweight="bold", color=DEEP)
-    save(fig, "walk_forward_validation.png")
+    save(fig, "walk_forward_validation_v2.png")
 
 
 def make_micro_accuracy():
@@ -172,7 +174,7 @@ def make_micro_accuracy():
     fig.text(
         0.5,
         0.935,
-        "Stage 1 — Micro-climate model accuracy",
+        "Stage 1 — Microclimate model accuracy",
         ha="center",
         va="center",
         fontsize=34,
@@ -214,7 +216,7 @@ def make_micro_accuracy():
             fontweight="bold",
             color="white",
         )
-    save(fig, "micro_climate_accuracy.png")
+    save(fig, "micro_climate_accuracy_v2.png")
 
 
 def gap_bin(hours):
@@ -235,8 +237,8 @@ def make_parity(target):
         xlabel, ylabel = "Measured pH", "Predicted pH"
         lim = (3.8, 11.15)
         ticks = np.arange(4, 12, 1)
-        stat = "R² = 0.93\nMAE = 0.33"
-        outfile = "ph_predicted_vs_measured.png"
+        stat = "R² = 0.93\nMAE = 0.33\nn = 57"
+        outfile = "ph_predicted_vs_measured_v2.png"
     else:
         path = ROOT / "plots" / "PH& EC_Results_48H_Version" / "MODEL_EXPORTS" / "v8_final_unified_model_48h_no_rh_eval_ec.csv"
         true_col, pred_col = "ec_true", "ec_pred"
@@ -244,8 +246,8 @@ def make_parity(target):
         xlabel, ylabel = "Measured EC (mS/cm)", "Predicted EC (mS/cm)"
         lim = (-0.25, 5.38)
         ticks = np.arange(0, 6, 1)
-        stat = "R² = 0.98\nMAE = 0.127 mS/cm"
-        outfile = "ec_predicted_vs_measured.png"
+        stat = "R² = 0.98\nMAE = 0.127 mS/cm\nn = 57"
+        outfile = "ec_predicted_vs_measured_v2.png"
 
     df = pd.read_csv(path)
     df["gap_bin"] = df["gap_hours"].map(gap_bin)
@@ -291,22 +293,24 @@ def make_parity(target):
         stat,
         transform=ax.transAxes,
         va="top",
-        fontsize=20,
+        fontsize=26,
         fontweight="bold",
         color=DEEP,
-        bbox=dict(boxstyle="round,pad=0.45", fc="#F3F0DC", ec="#7A8A4E", lw=1.8),
+        linespacing=1.25,
+        bbox=dict(boxstyle="round,pad=0.6", fc="#F3F0DC", ec="#7A8A4E", lw=2.2),
     )
     leg = ax.legend(
         title="Forecast gap",
         loc="lower right",
-        fontsize=16,
-        title_fontsize=17,
+        fontsize=22,
+        title_fontsize=24,
         frameon=True,
         facecolor=PAGE,
         edgecolor=GRID,
-        borderpad=0.55,
-        labelspacing=0.45,
-        handletextpad=0.65,
+        markerscale=1.4,
+        borderpad=0.9,
+        labelspacing=0.65,
+        handletextpad=0.9,
     )
     for text in leg.get_texts():
         text.set_color(DEEP)
@@ -350,7 +354,7 @@ def make_feature_importance():
     ax.set_xticks(np.arange(0, 0.12, 0.02))
     ax.tick_params(axis="x", labelsize=24, width=2.0, length=6)
     ax.tick_params(axis="y", width=2.0, length=5)
-    ax.set_xlabel("Mean XGBoost gain importance", fontsize=27, fontweight="bold", labelpad=8)
+    ax.set_xlabel("Mean model feature importance", fontsize=27, fontweight="bold", labelpad=8)
     ax.set_title("Most informative features", fontsize=36, fontweight="bold", color=DEEP, pad=17)
     ax.grid(axis="x", color=GRID, linewidth=1.6)
     ax.set_axisbelow(True)
@@ -359,7 +363,7 @@ def make_feature_importance():
     for spine in ["left", "bottom"]:
         ax.spines[spine].set_color(OLIVE)
         ax.spines[spine].set_linewidth(2.2)
-    save(fig, "feature_importance.png")
+    save(fig, "feature_importance_model.png")
 
 
 if __name__ == "__main__":
