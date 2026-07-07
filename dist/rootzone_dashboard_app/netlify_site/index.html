@@ -38,7 +38,7 @@
       z-index: 10;
     }
     .topbar-inner {
-      max-width: 1360px;
+      max-width: 1920px;
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -95,12 +95,13 @@
       background: var(--green);
     }
     .dashboard {
-      max-width: 1360px;
+      width: min(100%, 1920px);
+      max-width: none;
       margin: 0 auto;
-      padding: 22px 24px 34px;
+      padding: 22px clamp(24px, 3vw, 56px) 34px;
       display: grid;
-      grid-template-columns: 280px minmax(0, 1fr);
-      gap: 20px;
+      grid-template-columns: clamp(280px, 17vw, 340px) minmax(0, 1fr);
+      gap: clamp(18px, 1.6vw, 30px);
     }
     .rail {
       display: grid;
@@ -230,6 +231,28 @@
       display: grid;
       grid-template-columns: repeat(12, 1fr);
       gap: 14px;
+    }
+    .rootzone-field-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: end;
+    }
+    .rootzone-field-grid label,
+    .rootzone-field-grid input,
+    .rootzone-field-grid select {
+      min-width: 0;
+    }
+    .rootzone-field-grid .time-field {
+      grid-column: span 4;
+    }
+    .rootzone-field-grid .compact-field {
+      grid-column: span 2;
+    }
+    .rootzone-field-grid .date-field,
+    .rootzone-field-grid .medium-field {
+      grid-column: span 3;
+    }
+    .rootzone-field-grid .wide-field {
+      grid-column: span 4;
     }
     label {
       display: grid;
@@ -515,6 +538,17 @@
         grid-template-columns: 1fr 1fr;
       }
     }
+    @media (max-width: 1320px) {
+      .rootzone-field-grid .time-field,
+      .rootzone-field-grid .date-field,
+      .rootzone-field-grid .medium-field,
+      .rootzone-field-grid .wide-field {
+        grid-column: span 6;
+      }
+      .rootzone-field-grid .compact-field {
+        grid-column: span 3;
+      }
+    }
     @media (max-width: 760px) {
       .topbar {
         padding: 12px 14px;
@@ -530,6 +564,13 @@
         grid-template-columns: 1fr;
       }
       .span-2, .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 {
+        grid-column: span 1;
+      }
+      .rootzone-field-grid .time-field,
+      .rootzone-field-grid .compact-field,
+      .rootzone-field-grid .date-field,
+      .rootzone-field-grid .medium-field,
+      .rootzone-field-grid .wide-field {
         grid-column: span 1;
       }
       .steps, .kpi-grid, .result-grid {
@@ -653,23 +694,23 @@
         <div class="input-stack">
           <div class="field-block">
             <div class="block-heading">Current Status</div>
-            <div class="grid">
-              <label class="span-3">Measurement time
+            <div class="grid rootzone-field-grid">
+              <label class="time-field">Measurement time
                 <input id="anchorTime" type="datetime-local" required>
               </label>
-              <label class="span-3">Current pH
+              <label class="compact-field">Current pH
                 <input id="anchorPh" type="number" step="0.001" required>
               </label>
-              <label class="span-3">Current EC
+              <label class="compact-field">Current EC
                 <input id="anchorEc" type="number" step="0.0001" required>
               </label>
-              <label class="span-3">Prediction time
+              <label class="time-field">Prediction time
                 <input id="targetTime" type="datetime-local" required>
               </label>
-              <label class="span-3">Planting date
+              <label class="date-field">Planting date
                 <input id="plantingDate" type="date">
               </label>
-              <label class="span-3">Canopy cover
+              <label class="medium-field">Canopy cover
                 <input id="canopyCover" type="number" min="0" max="1" step="0.001" value="0">
               </label>
             </div>
@@ -677,27 +718,27 @@
 
           <div class="field-block">
             <div class="block-heading">Add Event</div>
-            <div class="grid">
-              <label class="span-4">Event time
+            <div class="grid rootzone-field-grid">
+              <label class="time-field">Event time
                 <input id="eventTime" type="datetime-local">
               </label>
-              <label class="span-4">Irrigation ml
+              <label class="wide-field">Irrigation ml
                 <input id="irrigationMl" type="number" min="0" step="1" value="0">
               </label>
-              <label class="span-4">Fertilizer
+              <label class="wide-field">Fertilizer
                 <select id="fertType">
                   <option value="none">None</option>
                   <option value="A">Type A</option>
                   <option value="B">Type B</option>
                 </select>
               </label>
-              <label class="span-4">Dose x
+              <label class="wide-field">Dose x
                 <input id="doseMultiplier" type="number" min="0" step="0.1" value="1">
               </label>
-              <label class="span-4">Gypsum
+              <label class="wide-field">Gypsum
                 <input id="gypsumMg" type="number" min="0" step="1" value="0">
               </label>
-              <label class="span-4">Kortin
+              <label class="wide-field">Kortin
                 <input id="kortinMg" type="number" min="0" step="1" value="0">
               </label>
             </div>
