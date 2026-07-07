@@ -42,6 +42,7 @@ DOWNLOAD_FILES = {
     "master": "etl_master_template.csv",
     "applied_master": "rootzone_applied_master.csv",
     "prediction": "etl_rootzone_prediction.csv",
+    "explanation": "etl_rootzone_explanation.json",
     "events": "rootzone_events_input.csv",
     "anchors": "rootzone_anchor_input.csv",
 }
@@ -547,7 +548,21 @@ def handle_prediction(payload: dict) -> dict:
         anchor_time=anchor_ts,
     )
     prediction_path = run_dir / DOWNLOAD_FILES["prediction"]
-    pd.DataFrame([prediction]).to_csv(prediction_path, index=False)
+    prediction_export = {key: value for key, value in prediction.items() if key != "xai"}
+    pd.DataFrame([prediction_export]).to_csv(prediction_path, index=False)
+
+    explanation_path = run_dir / DOWNLOAD_FILES["explanation"]
+    explanation_path.write_text(
+        json.dumps(
+            {
+                "prediction": prediction_export,
+                "xai": prediction.get("xai", {}),
+            },
+            default=json_default,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
     return {
         "ok": True,
@@ -556,6 +571,7 @@ def handle_prediction(payload: dict) -> dict:
         "snapped_target_time": target_ts,
         "downloads": {
             "prediction": f"/download/{run_id}/prediction",
+            "explanation": f"/download/{run_id}/explanation",
             "applied_master": f"/download/{run_id}/applied_master",
             "events": f"/download/{run_id}/events",
             "anchors": f"/download/{run_id}/anchors",

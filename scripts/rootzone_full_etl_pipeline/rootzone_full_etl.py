@@ -1146,6 +1146,277 @@ def robust_linear_gate(feats, meta):
     )
 
 
+FEATURE_LABELS = {
+    "ph0": "Current pH",
+    "ec0": "Current EC",
+    "gap_hours": "Prediction horizon",
+    "ET0_per_hour": "ET0 per hour",
+    "ET0_sum_t0_t1": "ET0 total",
+    "climate_demand_pull": "Climate demand x canopy",
+    "climate_demand_soil": "Climate demand x soil temperature",
+    "temp_x_canopy": "Soil temperature x canopy",
+    "soil_temp_mean": "Mean soil temperature",
+    "soil_delta": "Soil temperature change",
+    "temp_trend": "Air temperature trend",
+    "rad_t1_log": "Radiation at target",
+    "rad_morning": "Morning radiation",
+    "hist_dark_recent_6h": "Recent dark period",
+    "hist_irr_recent": "Recent irrigation",
+    "hist_irr_prior": "Prior irrigation",
+    "hist48_irr_prevday": "Previous-day irrigation",
+    "irr_total_t0_t1": "Irrigation in prediction window",
+    "irr_to_et0": "Irrigation to ET0 ratio",
+    "irr_after_last_salt": "Irrigation after salt event",
+    "fert_salt_total_t0_t1": "Fertilizer salt total",
+    "h3po4_total": "Acid total",
+    "salt_conc_t0_t1": "Salt concentration",
+    "stage_x_salt_conc": "Crop stage x salt concentration",
+    "log_ec_drive": "EC drive",
+    "hist_salt_buildup": "Recent salt buildup",
+    "hist_hrs_since_fert": "Hours since recent fertilizer",
+    "hrs_since_fert": "Hours since fertilizer",
+    "hrs_since_last_salt_event": "Hours since last salt event",
+    "last_event_salt_conc": "Last salt event concentration",
+    "salt_recency_pressure": "Salt recency pressure",
+    "salt_event_pos": "Salt event timing",
+    "pre_salt_irr_ratio_6h": "Pre-anchor salt/irrigation ratio, 6h",
+    "pre_salt_irr_ratio_24h": "Pre-anchor salt/irrigation ratio, 24h",
+    "pre_anchor_salt_buildup": "Pre-anchor salt buildup",
+    "salt_carryover_pressure": "Salt carryover pressure",
+    "ec_salt_carryover_pressure": "EC salt carryover pressure",
+    "high_ec_salt_carryover": "High EC carryover flag",
+    "ec0_x_p48_salt": "Current EC x 48h salt",
+    "ec_log_anchor": "Current EC, log scale",
+    "t1_early_day": "Target in early day",
+    "t1_morning_short": "Short morning horizon",
+    "hour_sin_b": "Target hour sine",
+    "hour_cos_b": "Target hour cosine",
+}
+
+
+FEATURE_DESCRIPTIONS = {
+    "ET0_per_hour": "Atmospheric water demand over the prediction window.",
+    "fert_salt_total_t0_t1": "Total salt-bearing fertilizer applied between the anchor and target.",
+    "h3po4_total": "Phosphoric acid applied between the anchor and target.",
+    "salt_conc_t0_t1": "Fertilizer salt load divided by irrigation volume.",
+    "irr_total_t0_t1": "Total irrigation entered for the prediction window.",
+    "irr_to_et0": "How irrigation volume compares with evaporative demand.",
+    "hist_salt_buildup": "Decayed fertilizer salts remaining from recent history.",
+    "pre_anchor_salt_buildup": "Salt carryover entering the prediction window.",
+    "salt_recency_pressure": "Recent concentrated salt event pressure.",
+    "ec_salt_carryover_pressure": "Interaction between current EC and salt carryover.",
+    "ph0": "The measured pH used as the prediction anchor.",
+    "ec0": "The measured EC used as the prediction anchor.",
+    "gap_hours": "Elapsed time from measurement to target prediction.",
+}
+
+
+FEATURE_CATEGORY_RULES = [
+    ("fertilizer", ("fert", "salt", "h3po4", "acid", "kortin", "gypsum")),
+    ("irrigation", ("irr",)),
+    ("climate", ("ET0", "climate", "temp", "soil", "rad", "dark")),
+    ("history", ("hist", "pre_", "carryover", "recency")),
+    ("time", ("gap", "hour", "t1_", "morning", "early")),
+    ("baseline", ("ph0", "ec0", "ec_log_anchor")),
+    ("crop", ("canopy", "stage")),
+]
+
+
+def feature_label(feature: str) -> str:
+    if feature in FEATURE_LABELS:
+        return FEATURE_LABELS[feature]
+    return feature.replace("_", " ").replace(" t0 t1", "").strip().title()
+
+
+def feature_category(feature: str) -> str:
+    for category, tokens in FEATURE_CATEGORY_RULES:
+        if any(token in feature for token in tokens):
+            return category
+    return "model"
+
+
+def safe_feature_float(value) -> float:
+    try:
+        number = float(value)
+    except Exception:
+        return 0.0
+    if not np.isfinite(number):
+        return 0.0
+    return number
+
+
+def contribution_direction(value: float) -> str:
+    if value > 1e-9:
+        return "increase"
+    if value < -1e-9:
+        return "decrease"
+    return "neutral"
+
+
+def prediction_direction(delta: float) -> str:
+    if delta > 1e-9:
+        return "increase"
+    if delta < -1e-9:
+        return "decrease"
+    return "stable"
+
+
+def driver_rows(
+    feats: dict,
+    feature_cols: list[str],
+    contributions: np.ndarray,
+    *,
+    global_importances: np.ndarray | None = None,
+    limit: int = 8,
+) -> list[dict]:
+    contributions = np.asarray(contributions, dtype=float)
+    ranked = sorted(range(len(feature_cols)), key=lambda i: abs(contributions[i]), reverse=True)
+    rows = []
+    for idx in ranked:
+        feature = feature_cols[idx]
+        contribution = safe_feature_float(contributions[idx])
+        if abs(contribution) < 1e-10:
+            continue
+        importance = None
+        if global_importances is not None and idx < len(global_importances):
+            importance = safe_feature_float(global_importances[idx])
+        rows.append(
+            {
+                "feature": feature,
+                "label": feature_label(feature),
+                "category": feature_category(feature),
+                "value": safe_feature_float(feats.get(feature, 0.0)),
+                "contribution": contribution,
+                "abs_contribution": abs(contribution),
+                "direction": contribution_direction(contribution),
+                "importance": importance,
+                "description": FEATURE_DESCRIPTIONS.get(feature, ""),
+            }
+        )
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def group_driver_pressure(rows: list[dict]) -> list[dict]:
+    grouped: dict[str, float] = {}
+    signed: dict[str, float] = {}
+    for row in rows:
+        category = row["category"]
+        grouped[category] = grouped.get(category, 0.0) + abs(float(row["contribution"]))
+        signed[category] = signed.get(category, 0.0) + float(row["contribution"])
+    total = sum(grouped.values()) or 1.0
+    return [
+        {
+            "category": category,
+            "share": value / total,
+            "signed_pressure": signed.get(category, 0.0),
+            "direction": contribution_direction(signed.get(category, 0.0)),
+        }
+        for category, value in sorted(grouped.items(), key=lambda item: item[1], reverse=True)
+    ]
+
+
+def xgb_target_contributions(model: dict, meta: dict, X: pd.DataFrame) -> tuple[list[str], np.ndarray, np.ndarray | None, str]:
+    try:
+        import xgboost as xgb
+
+        feature_cols = list(meta["feature_cols"])
+        booster = model["base"].get_booster()
+        raw = booster.predict(xgb.DMatrix(X, feature_names=feature_cols), pred_contribs=True)
+        contrib = np.asarray(raw)
+        n_features = len(feature_cols)
+        if contrib.ndim == 3:
+            contrib = contrib[0]
+            if contrib.shape[0] != 2 and contrib.shape[1] == 2:
+                contrib = contrib.T
+        elif contrib.ndim == 2:
+            contrib = contrib[0].reshape(1, -1)
+        else:
+            raise ValueError("Unexpected XGBoost contribution shape")
+        contrib = contrib[:, :n_features]
+        target_std = np.asarray(model["target_std"], dtype=float)
+        contrib = contrib * target_std.reshape(-1, 1)
+        global_importances = getattr(model["base"], "feature_importances_", None)
+        if global_importances is not None:
+            global_importances = np.asarray(global_importances, dtype=float)
+        return feature_cols, contrib, global_importances, "xgboost_tree_contributions"
+    except Exception:
+        feature_cols = list(meta["feature_cols"])
+        global_importances = getattr(model["base"], "feature_importances_", None)
+        if global_importances is None:
+            global_importances = np.ones(len(feature_cols), dtype=float)
+        global_importances = np.asarray(global_importances, dtype=float)
+        fallback = np.tile(global_importances, (2, 1))
+        return feature_cols, fallback, global_importances, "xgboost_global_importance"
+
+
+def robust_target_contributions(model: dict, meta: dict, feats: dict) -> tuple[list[str], np.ndarray, None, str] | None:
+    robust_linear = model.get("robust_linear")
+    if robust_linear is None:
+        return None
+    feature_cols = list(meta.get("robust_feature_cols", meta["feature_cols"]))
+    X = pd.DataFrame([feats])[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    try:
+        scaler = robust_linear.named_steps["standardscaler"]
+        multi = robust_linear.named_steps["multioutputregressor"]
+        scaled = np.asarray(scaler.transform(X), dtype=float)[0]
+        target_std = np.asarray(model["target_std"], dtype=float)
+        rows = []
+        for target_idx, estimator in enumerate(multi.estimators_[:2]):
+            rows.append(np.asarray(estimator.coef_, dtype=float) * scaled * target_std[target_idx])
+        return feature_cols, np.asarray(rows), None, "robust_linear_coefficients"
+    except Exception:
+        return None
+
+
+def build_prediction_explanation(
+    *,
+    model: dict,
+    meta: dict,
+    feats: dict,
+    X: pd.DataFrame,
+    model_component: str,
+    ph_pred: float,
+    ec_pred: float,
+    final_raw: np.ndarray,
+) -> dict:
+    xgb_cols, xgb_contrib, xgb_importance, xgb_method = xgb_target_contributions(model, meta, X)
+    selected_cols = xgb_cols
+    selected_contrib = xgb_contrib
+    selected_importance = xgb_importance
+    method = xgb_method
+
+    robust_contrib = robust_target_contributions(model, meta, feats)
+    if model_component == "robust_linear" and robust_contrib is not None:
+        selected_cols, selected_contrib, selected_importance, method = robust_contrib
+
+    ph_delta = float(ph_pred - feats["ph0"])
+    ec_delta = float(ec_pred - feats["ec0"])
+    ph_drivers = driver_rows(feats, selected_cols, selected_contrib[0], global_importances=selected_importance)
+    ec_drivers = driver_rows(feats, selected_cols, selected_contrib[1], global_importances=selected_importance)
+
+    return {
+        "method": method,
+        "model_component": model_component,
+        "prediction_delta": {
+            "ph": ph_delta,
+            "ph_direction": prediction_direction(ph_delta),
+            "ec_ms": ec_delta,
+            "ec_direction": prediction_direction(ec_delta),
+            "ec_log_change": safe_feature_float(final_raw[1]),
+        },
+        "drivers": {
+            "ph": ph_drivers,
+            "ec": ec_drivers,
+        },
+        "groups": {
+            "ph": group_driver_pressure(ph_drivers),
+            "ec": group_driver_pressure(ec_drivers),
+        },
+    }
+
+
 def load_rootzone_artifacts(model_dir: str | Path | None = None) -> tuple[dict, dict, Path]:
     joblib = _import_joblib()
     model_dir_path = resolve_path(model_dir, default=PACKAGE_DIR)
@@ -1328,6 +1599,16 @@ def predict_rootzone_from_master(
 
     ph_pred = feats["ph0"] + final_raw[0]
     ec_pred = max(0.0, (feats["ec0"] + meta["EC_TARGET_SHIFT"]) * np.exp(final_raw[1]) - meta["EC_TARGET_SHIFT"])
+    xai = build_prediction_explanation(
+        model=model,
+        meta=meta,
+        feats=feats,
+        X=X,
+        model_component=model_component,
+        ph_pred=ph_pred,
+        ec_pred=ec_pred,
+        final_raw=final_raw,
+    )
 
     return {
         "anchor_time": anchor_ts,
@@ -1339,6 +1620,7 @@ def predict_rootzone_from_master(
         "predicted_ec_ms": float(ec_pred),
         "model_component": model_component,
         "model_file": str(model_path),
+        "xai": xai,
     }
 
 
