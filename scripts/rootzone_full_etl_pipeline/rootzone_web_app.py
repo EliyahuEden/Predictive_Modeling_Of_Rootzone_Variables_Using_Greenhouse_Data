@@ -35,6 +35,7 @@ from rootzone_full_etl import (
 APP_DIR = Path(__file__).resolve().parent
 RUNS_DIR = APP_DIR / "app_runs"
 PRESETS_FILE = APP_DIR / "fertilizer_dose_presets.json"
+MODEL_META_FILE = APP_DIR / "v8_unified_model_48h_no_rh_model_meta.json"
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 DOWNLOAD_FILES = {
@@ -111,6 +112,31 @@ def load_presets() -> dict:
     for key, preset in DEFAULT_PRESETS["presets"].items():
         presets.setdefault(key, preset)
     return {"version": data.get("version", 1), "presets": presets}
+
+
+def load_model_summary() -> dict:
+    summary = {
+        "name": "Rootzone pH / EC hybrid model",
+        "version": "v8 48h no-RH",
+        "horizon_h": EVENT_WINDOW_H,
+        "targets": "pH + EC",
+        "features": None,
+        "training_rows": None,
+        "no_internal_rh": True,
+        "saved_at": None,
+    }
+    try:
+        meta = json.loads(MODEL_META_FILE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return summary
+
+    summary.update({
+        "features": len(meta.get("feature_cols", [])) or None,
+        "training_rows": meta.get("n_train"),
+        "no_internal_rh": bool(meta.get("NO_INTERNAL_RH", True)),
+        "saved_at": meta.get("saved_at"),
+    })
+    return summary
 
 
 def safe_filename(name: str) -> str:
@@ -633,6 +659,7 @@ class RootzoneHandler(BaseHTTPRequestHandler):
                         "min_climate_before_anchor_h": MIN_CLIMATE_BEFORE_ANCHOR_H,
                         "event_window_h": EVENT_WINDOW_H,
                     },
+                    "model": load_model_summary(),
                 })
                 return
             if path.startswith("/download/"):

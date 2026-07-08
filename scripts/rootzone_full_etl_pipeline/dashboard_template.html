@@ -2001,7 +2001,7 @@
     }
     .rootzone-field-grid .date-field,
     .rootzone-field-grid .medium-field {
-      grid-column: span 3;
+      grid-column: span 6;
     }
     .rootzone-field-grid .wide-field {
       grid-column: span 4;
@@ -2194,6 +2194,353 @@
       .rootzone-field-grid .wide-field {
         grid-column: span 12;
       }
+      .events-section .table-wrap {
+        overflow-x: visible;
+      }
+      .events-section table {
+        display: block;
+        min-width: 0;
+        width: 100%;
+      }
+      .events-section thead {
+        display: none;
+      }
+      .events-section tbody {
+        display: grid;
+        gap: 10px;
+      }
+      .events-section tr {
+        display: grid;
+        overflow: hidden;
+        border: 1px solid var(--console-line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, .72);
+      }
+      .events-section td {
+        display: grid;
+        grid-template-columns: minmax(96px, .42fr) minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        border-bottom: 1px solid var(--console-line);
+        padding: 10px 12px;
+        text-align: right;
+      }
+      .events-section td::before {
+        content: attr(data-label);
+        color: var(--console-muted);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-align: left;
+        text-transform: uppercase;
+      }
+      .events-section td:last-child {
+        border-bottom: 0;
+      }
+      .events-section td[colspan] {
+        display: block;
+        text-align: left;
+      }
+      .events-section td[colspan]::before {
+        content: none;
+      }
+    }
+
+    /* Prediction-console redesign */
+    .top-actions {
+      gap: 12px;
+    }
+    .top-stat {
+      min-width: 128px;
+      min-height: 42px;
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      border: 1px solid rgba(157, 184, 191, .62);
+      border-radius: 8px;
+      padding: 7px 11px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .84);
+    }
+    .top-stat span,
+    .console-label,
+    .console-card span,
+    .model-contract-panel .side-title {
+      color: var(--console-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .top-stat strong {
+      color: var(--console-text);
+      font-size: 13px;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .ops-console {
+      display: grid;
+      grid-template-columns: minmax(360px, .82fr) minmax(480px, 1.18fr);
+      gap: 18px;
+      align-items: stretch;
+      border: 1px solid rgba(157, 184, 191, .62);
+      border-radius: 8px;
+      padding: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(249, 252, 252, .93)),
+        linear-gradient(135deg, rgba(8, 127, 117, .08), rgba(40, 100, 201, .06));
+      box-shadow: 0 18px 42px rgba(35, 58, 68, .09);
+      overflow: hidden;
+    }
+    .console-main,
+    .console-board {
+      min-width: 0;
+    }
+    .console-main {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    .console-topline,
+    .console-actions,
+    .console-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .console-state {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(8, 127, 117, .3);
+      border-radius: 8px;
+      padding: 5px 10px;
+      color: var(--console-teal);
+      background: rgba(8, 127, 117, .08);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .console-main h2 {
+      max-width: 720px;
+      margin: 0;
+      color: var(--console-text);
+      font-size: clamp(30px, 3vw, 46px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+    .console-next {
+      display: grid;
+      gap: 5px;
+      max-width: 720px;
+      border-left: 4px solid var(--console-teal);
+      padding: 10px 12px;
+      background: rgba(8, 127, 117, .055);
+    }
+    .console-next strong {
+      color: var(--console-text);
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .console-progress {
+      height: 8px;
+      max-width: 720px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(157, 184, 191, .28);
+    }
+    .console-progress span {
+      display: block;
+      width: 25%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--console-teal), var(--console-blue));
+      transition: width .25s ease;
+    }
+    .console-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .console-card {
+      min-height: 106px;
+      display: grid;
+      align-content: space-between;
+      gap: 8px;
+      border: 1px solid rgba(157, 184, 191, .58);
+      border-radius: 8px;
+      padding: 13px;
+      background: rgba(255, 255, 255, .8);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .78);
+    }
+    .console-card strong {
+      color: var(--console-text);
+      font-size: 20px;
+      line-height: 1.15;
+    }
+    .console-card small {
+      color: var(--console-soft);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .console-card.primary {
+      border-color: rgba(8, 127, 117, .34);
+      background: linear-gradient(180deg, rgba(8, 127, 117, .09), rgba(255, 255, 255, .86));
+    }
+    .console-card.wide {
+      grid-column: span 2;
+    }
+    .console-card.decision {
+      grid-column: 1 / -1;
+      min-height: 88px;
+    }
+    .flow-step {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(157, 184, 191, .54);
+      border-radius: 8px;
+      padding: 6px 9px;
+      background: rgba(255, 255, 255, .75);
+      color: var(--console-soft);
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .flow-step b {
+      color: var(--console-blue);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .model-contract-panel {
+      padding: 15px;
+    }
+    .model-contract-panel .summary-list {
+      margin-top: 10px;
+    }
+    .setup-panel .panel-title,
+    .result-panel .panel-title {
+      align-items: center;
+    }
+    .field-hint {
+      color: var(--console-muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .prediction-aside {
+      position: sticky;
+      top: 84px;
+    }
+    .trust-card {
+      display: grid;
+      gap: 10px;
+      border: 1px solid rgba(157, 184, 191, .58);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, .82);
+    }
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .trust-grid div {
+      display: grid;
+      gap: 3px;
+      border: 1px solid rgba(216, 229, 232, .9);
+      border-radius: 8px;
+      padding: 9px;
+      background: rgba(248, 251, 252, .76);
+    }
+    .trust-grid span {
+      color: var(--console-muted);
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      font-weight: 850;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .trust-grid strong {
+      color: var(--console-text);
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .result-panel {
+      overflow: visible;
+    }
+    body.has-result #resultPanel {
+      order: -1;
+      border-color: rgba(8, 127, 117, .5);
+      box-shadow: 0 18px 48px rgba(8, 127, 117, .14);
+    }
+    .result-insight-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .result-insight {
+      border: 1px solid rgba(157, 184, 191, .58);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(248, 251, 252, .8);
+    }
+    .result-insight span {
+      display: block;
+      color: var(--console-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 850;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .result-insight strong {
+      display: block;
+      margin-top: 5px;
+      color: var(--console-text);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+    @media (max-width: 1360px) {
+      .ops-console {
+        grid-template-columns: 1fr;
+      }
+      .console-board {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .prediction-aside {
+        position: static;
+      }
+    }
+    @media (max-width: 900px) {
+      .result-insight-strip,
+      .trust-grid {
+        grid-template-columns: 1fr;
+      }
+      .console-board {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .console-card.wide {
+        grid-column: span 2;
+      }
+      .top-stat {
+        min-width: 0;
+      }
+    }
+    @media (max-width: 560px) {
+      .console-board {
+        grid-template-columns: 1fr;
+      }
+      .console-card.wide {
+        grid-column: span 1;
+      }
     }
   </style>
 </head>
@@ -2208,8 +2555,9 @@
         </div>
       </div>
       <div class="top-actions">
-        <div class="pill" id="backendPill">Model backend ready</div>
-        <a class="button-link secondary" href="#forecastForm">New prediction</a>
+        <div class="top-stat"><span>Backend</span><strong id="backendPill">Ready</strong></div>
+        <div class="top-stat"><span>Workflow</span><strong id="topModelTag">Rootzone prediction</strong></div>
+        <a class="button-link secondary" href="#forecastForm">New run</a>
       </div>
     </div>
   </header>
@@ -2219,6 +2567,8 @@
       <div id="alertTitle" class="alert-title">Input problem</div>
       <div id="alertMessage" class="alert-message"></div>
       <div class="actions">
+        <button type="button" id="alertCancel" class="secondary hidden">Go back</button>
+        <button type="button" id="alertConfirm" class="hidden">Continue</button>
         <button type="button" id="alertClose">Close</button>
       </div>
     </div>
@@ -2246,72 +2596,83 @@
           <div class="summary-row"><span>Target</span><strong id="summaryTarget">-</strong></div>
         </div>
       </section>
+
+      <section class="side-panel model-contract-panel">
+        <div class="side-title">Model Contract</div>
+        <div class="summary-list">
+          <div class="summary-row"><span>Horizon</span><strong id="sideModelHorizon">48 h</strong></div>
+          <div class="summary-row"><span>Features</span><strong id="sideModelFeatures">-</strong></div>
+          <div class="summary-row"><span>Training rows</span><strong id="sideModelTrain">-</strong></div>
+          <div class="summary-row"><span>Internal RH</span><strong id="sideModelRh">No</strong></div>
+        </div>
+      </section>
     </aside>
 
     <div class="content">
-      <section class="hero-panel">
-        <div class="hero-copy">
-          <div class="hero-topline">
+      <section class="ops-console" id="runConsole">
+        <div class="console-main">
+          <div class="console-topline">
             <div class="eyebrow">Prediction console</div>
-            <div class="hero-stage">Guided pH / EC run</div>
+            <div class="console-state" id="consoleState">Setup required</div>
           </div>
-          <h2>Predict rootzone pH and EC from real greenhouse context.</h2>
-          <p>Upload weather and radiation, confirm the latest measured pH/EC anchor, add irrigation or fertilizer events, then run one prediction with visual driver explanations.</p>
-          <div class="hero-actions">
-            <a class="button-link" href="#forecastForm">Start with weather files</a>
-            <a class="button-link secondary" href="#workflowCard">View run workflow</a>
+          <h2>Rootzone pH / EC prediction run</h2>
+          <div class="console-progress" aria-hidden="true"><span id="consoleProgressBar"></span></div>
+          <div class="console-next">
+            <span class="console-label">Next action</span>
+            <strong id="consoleNextAction">Upload weather and radiation files</strong>
           </div>
-          <div class="hero-metrics">
-            <div class="hero-metric"><span>Targets</span><strong>pH + EC</strong></div>
-            <div class="hero-metric"><span>Model window</span><strong>Up to 48 h</strong></div>
-            <div class="hero-metric"><span>Explainability</span><strong>Driver bars</strong></div>
+          <div class="console-actions">
+            <a class="button-link" href="#forecastForm">Upload data</a>
+            <a class="button-link secondary" href="#rootzonePanel">Rootzone inputs</a>
+            <a class="button-link secondary" href="#resultPanel">Result</a>
           </div>
-          <div class="readiness-list">
-            <div class="mini-check"><div><strong>Files cover range</strong><span>Weather and radiation include the anchor and target times.</span></div></div>
-            <div class="mini-check"><div><strong>Trusted anchor</strong><span>Current pH/EC values come from the latest measurement.</span></div></div>
-            <div class="mini-check"><div><strong>Events are optional</strong><span>Add 48 h irrigation/fertigation history only when it occurred.</span></div></div>
+          <div class="console-flow" id="workflowCard">
+            <div class="flow-step"><b>01</b> Files</div>
+            <div class="flow-step"><b>02</b> Timeline</div>
+            <div class="flow-step"><b>03</b> Anchor</div>
+            <div class="flow-step"><b>04</b> Events</div>
+            <div class="flow-step"><b>05</b> Result</div>
           </div>
         </div>
-        <div class="run-card workflow-card" id="workflowCard">
-          <div class="workflow-header">
-            <span>What happens in one run</span>
-            <strong>Prediction workflow</strong>
-            <p>This is the exact path the app follows. Complete each stage from top to bottom, then read the pH/EC result and the XAI drivers.</p>
+        <div class="console-board">
+          <div class="console-card primary">
+            <span>Run stage</span>
+            <strong id="consoleStage">1 / 4</strong>
+            <small id="consoleStageNote">Waiting for forecast data</small>
           </div>
-          <div class="workflow-flow">
-            <div class="workflow-node">
-              <div class="workflow-index">01</div>
-              <div><span>Files</span><strong>Upload weather + radiation</strong><p>Creates the external context needed to estimate greenhouse conditions.</p></div>
-            </div>
-            <div class="workflow-node">
-              <div class="workflow-index">02</div>
-              <div><span>Micro-climate</span><strong>Generate model timeline</strong><p>Builds the 10-minute greenhouse timeline used by the rootzone model.</p></div>
-            </div>
-            <div class="workflow-node">
-              <div class="workflow-index">03</div>
-              <div><span>Rootzone anchor</span><strong>Enter current pH + EC</strong><p>Sets the last trusted measurement that the prediction moves forward from.</p></div>
-            </div>
-            <div class="workflow-node">
-              <div class="workflow-index">04</div>
-              <div><span>Operations</span><strong>Add irrigation/fertilizer events</strong><p>Adds actions that can push salinity or pH up/down before the target time.</p></div>
-            </div>
-            <div class="workflow-node">
-              <div class="workflow-index">05</div>
-              <div><span>Output</span><strong>Predict and explain</strong><p>Returns pH, EC, and the feature drivers behind the movement.</p></div>
-            </div>
+          <div class="console-card">
+            <span>Data range</span>
+            <strong id="consoleRange">Not loaded</strong>
+            <small>Weather timeline coverage</small>
           </div>
-          <div class="workflow-output-grid">
-            <div class="workflow-output"><span>Main result</span><strong>Predicted pH and EC</strong></div>
-            <div class="workflow-output"><span>XAI result</span><strong>Top feature drivers</strong></div>
+          <div class="console-card">
+            <span>Target</span>
+            <strong id="consoleTarget">Not set</strong>
+            <small>Anchor-to-target prediction time</small>
+          </div>
+          <div class="console-card">
+            <span>Events</span>
+            <strong id="consoleEvents">0</strong>
+            <small>Irrigation and fertigation rows</small>
+          </div>
+          <div class="console-card wide">
+            <span>Model</span>
+            <strong id="consoleModel">pH + EC / 48 h</strong>
+            <small id="consoleModelMeta">Prediction model ready</small>
+          </div>
+          <div class="console-card decision">
+            <span>Decision state</span>
+            <strong id="consoleDecision">Need files</strong>
+            <small id="consoleDecisionNote">Complete data upload first</small>
           </div>
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel setup-panel">
         <div class="panel-title">
           <div>
-            <h2>Build Micro-Climate Context</h2>
-            <p>Start here. Upload external weather and radiation files, then the app generates the greenhouse timeline the rootzone model needs. Supported formats are CSV, Excel, and JSON.</p>
+            <h2>1. Build Climate Context</h2>
+            <p>Upload weather and radiation files. The generated timeline becomes the model input range.</p>
           </div>
           <div id="forecastStatus" class="status">Ready</div>
         </div>
@@ -2338,8 +2699,8 @@
       <section class="panel hidden" id="forecastPanel">
         <div class="panel-title">
           <div>
-            <h2>Micro-Climate Forecast Ready</h2>
-            <p>The generated timeline is now available. Use the date range below to choose a measured anchor time and a target prediction time.</p>
+            <h2>Climate Timeline Ready</h2>
+            <p>Confirm that the generated range covers the anchor and target times.</p>
           </div>
           <div id="forecastRange" class="status good"></div>
         </div>
@@ -2358,9 +2719,9 @@
       <section class="panel rootzone-panel hidden" id="rootzonePanel">
         <div class="panel-title rootzone-title">
           <div>
-            <div class="panel-kicker">Step 3 - Rootzone inputs</div>
-            <h2>Configure Rootzone Prediction</h2>
-            <p>Enter the latest measured pH/EC anchor, select the target time, and add irrigation or fertilizer events from the <strong>48 h before the anchor</strong> plus any planned events before the target. If no events occurred, leave the event list empty.</p>
+            <div class="panel-kicker">Prediction inputs</div>
+            <h2>2. Configure Rootzone Prediction</h2>
+            <p>Set the measured anchor, target time, crop state, and operational events used by the pH/EC model.</p>
           </div>
           <div id="eventStatus" class="status">No events added</div>
         </div>
@@ -2378,22 +2739,22 @@
               </div>
               <div class="form-section-body">
                 <div class="grid rootzone-field-grid">
-                  <label class="time-field">Measurement time
+                  <label class="time-field">Measurement time <span class="field-hint">last trusted reading</span>
                     <input id="anchorTime" type="datetime-local" required>
                   </label>
-                  <label class="compact-field">Current pH
+                  <label class="compact-field">Current pH <span class="field-hint">measured</span>
                     <input id="anchorPh" type="number" step="0.001" required>
                   </label>
-                  <label class="compact-field">Current EC
+                  <label class="compact-field">Current EC <span class="field-hint">mS/cm</span>
                     <input id="anchorEc" type="number" step="0.0001" required>
                   </label>
-                  <label class="time-field">Prediction time
+                  <label class="time-field">Prediction time <span class="field-hint">within range</span>
                     <input id="targetTime" type="datetime-local" required>
                   </label>
                   <label class="date-field">Planting date
                     <input id="plantingDate" type="date">
                   </label>
-                  <label class="medium-field">Canopy cover
+                  <label class="medium-field">Canopy cover <span class="field-hint">0 to 1</span>
                     <input id="canopyCover" type="number" min="0" max="1" step="0.001" value="0">
                   </label>
                 </div>
@@ -2414,7 +2775,7 @@
                   <label class="time-field">Event time
                     <input id="eventTime" type="datetime-local">
                   </label>
-                  <label class="wide-field">Irrigation ml
+                  <label class="wide-field">Irrigation <span class="field-hint">ml</span>
                     <input id="irrigationMl" type="number" min="0" step="1" value="0">
                   </label>
                   <label class="wide-field">Fertilizer
@@ -2427,10 +2788,10 @@
                   <label class="wide-field">Dose x
                     <input id="doseMultiplier" type="number" min="0" step="0.1" value="1">
                   </label>
-                  <label class="wide-field">Gypsum
+                  <label class="wide-field">Gypsum <span class="field-hint">mg</span>
                     <input id="gypsumMg" type="number" min="0" step="1" value="0">
                   </label>
-                  <label class="wide-field">Kortin
+                  <label class="wide-field">Kortin <span class="field-hint">mg</span>
                     <input id="kortinMg" type="number" min="0" step="1" value="0">
                   </label>
                 </div>
@@ -2474,6 +2835,18 @@
 
           <aside class="prediction-aside">
             <div id="requirementsBanner" class="requirements-card"></div>
+            <div class="trust-card">
+              <div class="requirements-head">
+                <span>Model trust</span>
+                <strong>Run contract</strong>
+              </div>
+              <div class="trust-grid">
+                <div><span>Targets</span><strong id="trustTargets">pH + EC</strong></div>
+                <div><span>Horizon</span><strong id="trustHorizon">48 h</strong></div>
+                <div><span>Features</span><strong id="trustFeatures">-</strong></div>
+                <div><span>Training</span><strong id="trustTraining">-</strong></div>
+              </div>
+            </div>
             <div class="predict-card">
               <span>Final action</span>
               <strong>Run rootzone prediction</strong>
@@ -2485,11 +2858,11 @@
         </div>
       </section>
 
-      <section class="panel hidden" id="resultPanel">
+      <section class="panel result-panel hidden" id="resultPanel">
         <div class="panel-title">
           <div>
             <h2>Prediction Result</h2>
-            <p>Final pH and EC forecast, plus a visual explanation of which model features pushed each value up or down.</p>
+            <p>Predicted rootzone pH and EC with run-specific driver explanations.</p>
           </div>
           <div id="resultStatus" class="status good">Complete</div>
         </div>
@@ -2498,6 +2871,11 @@
           <div class="result-card primary"><span>Predicted EC</span><strong id="predEc">-</strong><small>mS/cm</small></div>
           <div class="result-card"><span>Gap hours</span><strong id="gapHours">-</strong><small>anchor to target</small></div>
           <div class="result-card"><span>Model</span><strong id="component">-</strong><small>component used</small></div>
+        </div>
+        <div class="result-insight-strip">
+          <div class="result-insight"><span>Target time</span><strong id="predictionTarget">-</strong></div>
+          <div class="result-insight"><span>Input health</span><strong id="resultConfidence">Waiting for run</strong></div>
+          <div class="result-insight"><span>Anchor movement</span><strong id="resultDelta">Awaiting explanation</strong></div>
         </div>
         <div class="downloads">
           <a id="predictionDownload" class="button-link" href="#">Download prediction</a>
@@ -2564,6 +2942,9 @@
       timestampMin: null,   // ISO string – start of weather data
       timestampMax: null,   // ISO string – end of weather data
       forecastRows: 0,
+      model: null,
+      resultReady: false,
+      noHistoryEventsRun: false,
       // validation constants – fetched from backend on load
       MIN_CLIMATE_H: 6,
       EVENT_WINDOW_H: 48,
@@ -2584,15 +2965,45 @@
       el.className = 'status ' + kind;
     }
 
+    let alertResolver = null;
+
+    function configureAlertActions(mode = 'alert', options = {}) {
+      const close = $('alertClose');
+      const cancel = $('alertCancel');
+      const confirm = $('alertConfirm');
+      close.classList.toggle('hidden', mode !== 'alert');
+      cancel.classList.toggle('hidden', mode !== 'confirm');
+      confirm.classList.toggle('hidden', mode !== 'confirm');
+      close.textContent = options.closeLabel || 'Close';
+      cancel.textContent = options.cancelLabel || 'Go back';
+      confirm.textContent = options.confirmLabel || 'Continue';
+    }
+
+    function closeAlert(result = false) {
+      $('alertOverlay').classList.add('hidden');
+      const resolver = alertResolver;
+      alertResolver = null;
+      if (resolver) resolver(result);
+    }
+
     function showAlert(title, message, kind = 'bad') {
+      alertResolver = null;
       $('alertTitle').textContent = title;
       $('alertMessage').textContent = message;
       $('alertCard').className = `alert-card ${kind === 'warn' ? 'warn' : ''}`;
+      configureAlertActions('alert');
       $('alertOverlay').classList.remove('hidden');
     }
 
-    function hideAlert() {
-      $('alertOverlay').classList.add('hidden');
+    function confirmAlert(title, message, options = {}) {
+      $('alertTitle').textContent = title;
+      $('alertMessage').textContent = message;
+      $('alertCard').className = `alert-card ${options.kind === 'warn' ? 'warn' : ''}`;
+      configureAlertActions('confirm', options);
+      $('alertOverlay').classList.remove('hidden');
+      return new Promise(resolve => {
+        alertResolver = resolve;
+      });
     }
 
     function validateUploadInput(input, label) {
@@ -2685,6 +3096,75 @@
       return 'Stable';
     }
 
+    function setText(id, value) {
+      const el = $(id);
+      if (el) el.textContent = value;
+    }
+
+    function renderModelSummary(model) {
+      state.model = model || state.model || {};
+      const horizon = Number(state.model.horizon_h || state.EVENT_WINDOW_H || 48);
+      const features = state.model.features ? String(state.model.features) : '-';
+      const trainRows = state.model.training_rows ? Number(state.model.training_rows).toLocaleString() : '-';
+      const rhText = state.model.no_internal_rh ? 'No' : 'Yes';
+      const version = state.model.version || 'v8 48h no-RH';
+
+      setText('topModelTag', 'Rootzone prediction');
+      setText('sideModelHorizon', `${horizon} h`);
+      setText('sideModelFeatures', features);
+      setText('sideModelTrain', trainRows);
+      setText('sideModelRh', rhText);
+      setText('trustTargets', state.model.targets || 'pH + EC');
+      setText('trustHorizon', `${horizon} h`);
+      setText('trustFeatures', features === '-' ? '-' : `${features} drivers`);
+      setText('trustTraining', trainRows);
+      setText('consoleModel', `${state.model.targets || 'pH + EC'} / ${horizon} h`);
+      setText('consoleModelMeta', 'Prediction model ready');
+    }
+
+    function updateConsole() {
+      const hasForecast = Boolean(state.runId);
+      const hasAnchor = Boolean($('anchorTime').value && $('anchorPh').value && $('anchorEc').value && $('targetTime').value);
+      let stage = '1 / 4';
+      let progress = 25;
+      let stateText = 'Setup required';
+      let stageNote = 'Waiting for forecast data';
+      let next = 'Upload weather and radiation files';
+      let decision = 'Need files';
+      let decisionNote = 'Complete data upload first';
+
+      if (hasForecast) {
+        stage = '3 / 4';
+        progress = 72;
+        stateText = 'Input review';
+        stageNote = 'Climate timeline is ready';
+        next = hasAnchor ? 'Review readiness checks and run prediction' : 'Enter measured pH, EC, and target time';
+        decision = hasAnchor ? 'Ready checks active' : 'Need anchor';
+        decisionNote = hasAnchor ? 'Resolve red checks before running' : 'pH, EC, anchor, and target are required';
+      }
+      if (state.resultReady) {
+        stage = '4 / 4';
+        progress = 100;
+        stateText = 'Prediction complete';
+        stageNote = 'Result and drivers are ready';
+        next = 'Review pH, EC, and driver explanation';
+        decision = 'Result ready';
+        decisionNote = state.noHistoryEventsRun ? 'No before-t0 events used' : 'Download outputs or adjust inputs for a new run';
+      }
+
+      setText('consoleState', stateText);
+      setText('consoleStage', stage);
+      setText('consoleStageNote', stageNote);
+      setText('consoleNextAction', next);
+      setText('consoleDecision', decision);
+      setText('consoleDecisionNote', decisionNote);
+      setText('consoleEvents', String(state.events.length));
+      setText('consoleTarget', $('targetTime').value ? prettyTime($('targetTime').value) : 'Not set');
+      setText('consoleRange', state.timestampMin && state.timestampMax ? `${prettyTime(state.timestampMin)} to ${prettyTime(state.timestampMax)}` : 'Not loaded');
+      const bar = $('consoleProgressBar');
+      if (bar) bar.style.width = `${progress}%`;
+    }
+
     function renderDriverList(containerId, rows, targetLabel) {
       const container = $(containerId);
       const drivers = Array.isArray(rows) ? rows : [];
@@ -2746,6 +3226,7 @@
       $('ecMovement').textContent = `${movementText(delta.ec_direction)} ${signedNumber(delta.ec_ms, 4)} mS/cm`;
       $('phMovementNote').textContent = 'Direction is relative to the measured pH anchor.';
       $('ecMovementNote').textContent = `EC bars show log-change pressure; total log change ${signedNumber(delta.ec_log_change, 4)}.`;
+      setText('resultDelta', `pH ${signedNumber(delta.ph, 3)} / EC ${signedNumber(delta.ec_ms, 4)} mS/cm`);
 
       renderGroupSummary('phGroupSummary', xai.groups && xai.groups.ph);
       renderGroupSummary('ecGroupSummary', xai.groups && xai.groups.ec);
@@ -2788,6 +3269,16 @@
         event.fert_type !== 'none' ||
         Number(event.gypsum_mg || 0) > 0 ||
         Number(event.kortin_mg || 0) > 0;
+    }
+
+    function beforeAnchorHistoryEvents() {
+      const anchorDate = asDate($('anchorTime').value);
+      if (!anchorDate) return [];
+      const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
+      return state.events.filter(ev => {
+        const d = asDate(ev.time);
+        return d && d >= windowStart && d <= anchorDate && eventHasValue(ev) && eventValidation(ev).kind !== 'bad';
+      });
     }
 
     // ── Pre-flight checks (returns array of {kind, text} issues) ─────────────
@@ -2840,13 +3331,13 @@
 
       // Advisory: no events in the full window (anchor−48h → target)
       if (issues.length === 0 && anchorDate) {
-        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
-        const beforeAnchorEvents = state.events.filter(ev => {
-          const d = asDate(ev.time);
-          return d && d >= windowStart && d <= anchorDate;
-        });
+        const beforeAnchorEvents = beforeAnchorHistoryEvents();
         if (beforeAnchorEvents.length === 0)
-          issues.push({ kind: 'warn', text: `No before-t0 irrigation or fertilizer events were entered for the ${state.EVENT_WINDOW_H}-h window before anchor. The model uses these events as context; if events occurred, add them before predicting.` });
+          issues.push({
+            kind: 'warn',
+            code: 'missing_before_t0_events',
+            text: `No before-t0 irrigation or fertilizer events were entered for the ${state.EVENT_WINDOW_H}-h window before anchor. If nothing occurred, you can continue, but this prediction will be labeled as run without history events.`
+          });
       }
 
       return issues;
@@ -2883,11 +3374,7 @@
 
       // Before-t0 events in the historical feature window
       if (anchorDate) {
-        const windowStart = new Date(anchorDate.getTime() - state.EVENT_WINDOW_H * 3600000);
-        const beforeAnchorCount = state.events.filter(ev => {
-          const d = asDate(ev.time);
-          return d && d >= windowStart && d <= anchorDate && eventValidation(ev).kind !== 'bad';
-        }).length;
+        const beforeAnchorCount = beforeAnchorHistoryEvents().length;
         rows.push({
           ok: beforeAnchorCount > 0,
           warn: beforeAnchorCount === 0,
@@ -2922,6 +3409,7 @@
       $('summaryEvents').textContent = String(state.events.length);
       $('summaryTarget').textContent = $('targetTime').value ? prettyTime($('targetTime').value) : '-';
       updateRequirementsBanner();
+      updateConsole();
     }
 
     // ── Event table ───────────────────────────────────────────────────────────
@@ -2942,14 +3430,14 @@
         const row = document.createElement('tr');
         if (validation.kind === 'bad') row.classList.add('invalid');
         row.innerHTML = `
-          <td>${prettyTime(event.time)}</td>
-          <td>${Number(event.irrigation_ml || 0).toLocaleString()}</td>
-          <td>${event.fert_type}</td>
-          <td>${event.fert_type === 'none' ? '-' : event.multiplier}</td>
-          <td>${event.gypsum_mg}</td>
-          <td>${event.kortin_mg}</td>
-          <td><span class="tag ${validation.kind === 'bad' ? 'bad' : validation.kind === 'warn' ? 'warn' : ''}">${validation.text}</span></td>
-          <td><button type="button" class="danger" data-remove="${index}">Remove</button></td>
+          <td data-label="Time">${prettyTime(event.time)}</td>
+          <td data-label="Irrigation">${Number(event.irrigation_ml || 0).toLocaleString()}</td>
+          <td data-label="Fert">${event.fert_type}</td>
+          <td data-label="Dose">${event.fert_type === 'none' ? '-' : event.multiplier}</td>
+          <td data-label="Gypsum">${event.gypsum_mg}</td>
+          <td data-label="Kortin">${event.kortin_mg}</td>
+          <td data-label="Status"><span class="tag ${validation.kind === 'bad' ? 'bad' : validation.kind === 'warn' ? 'warn' : ''}">${validation.text}</span></td>
+          <td data-label="Action"><button type="button" class="danger" data-remove="${index}">Remove</button></td>
         `;
         body.appendChild(row);
       });
@@ -2976,12 +3464,14 @@
       }
     });
 
-    $('alertClose').addEventListener('click', hideAlert);
+    $('alertClose').addEventListener('click', () => closeAlert(false));
+    $('alertCancel').addEventListener('click', () => closeAlert(false));
+    $('alertConfirm').addEventListener('click', () => closeAlert(true));
     $('alertOverlay').addEventListener('click', (event) => {
-      if (event.target === $('alertOverlay')) hideAlert();
+      if (event.target === $('alertOverlay')) closeAlert(false);
     });
 
-    ['anchorTime', 'targetTime', 'plantingDate', 'canopyCover'].forEach(id => {
+    ['anchorTime', 'targetTime', 'anchorPh', 'anchorEc', 'plantingDate', 'canopyCover'].forEach(id => {
       $(id).addEventListener('change', () => {
         renderEvents();
         updateSummary();
@@ -3010,6 +3500,9 @@
         state.timestampMin   = data.timestamp_min;
         state.timestampMax   = data.timestamp_max;
         state.forecastRows   = data.forecast_rows;
+        state.resultReady    = false;
+        state.noHistoryEventsRun = false;
+        document.body.classList.remove('has-result');
 
         $('runId').textContent = 'Forecast session ready';
         $('forecastPanel').classList.remove('hidden');
@@ -3094,9 +3587,34 @@
         return;
       }
       if (warnings.length) {
-        showAlert('Check before-t0 events', warnings.map(w => w.text).join('\n'), 'warn');
+        const missingHistoryWarning = warnings.find(w => w.code === 'missing_before_t0_events');
+        const otherWarnings = warnings.filter(w => w.code !== 'missing_before_t0_events');
+
+        if (missingHistoryWarning) {
+          const continueWithoutHistory = await confirmAlert(
+            'No before-t0 events entered',
+            missingHistoryWarning.text,
+            {
+              kind: 'warn',
+              cancelLabel: 'Go back to events',
+              confirmLabel: 'Continue without events',
+            }
+          );
+          if (!continueWithoutHistory) {
+            setStatus('predictStatus', 'Prediction paused - add before-t0 events or continue only if none occurred.', 'warn');
+            const eventsSection = document.querySelector('.events-section') || $('rootzonePanel');
+            if (eventsSection) eventsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if ($('eventTime')) setTimeout(() => $('eventTime').focus({ preventScroll: true }), 300);
+            return;
+          }
+        }
+
+        if (otherWarnings.length) {
+          showAlert('Check prediction inputs', otherWarnings.map(w => w.text).join('\n'), 'warn');
+        }
       }
 
+      const runWithoutHistoryEvents = beforeAnchorHistoryEvents().length === 0;
       setStatus('predictStatus', 'Running prediction...');
       $('predictButton').disabled = true;
       try {
@@ -3109,6 +3627,7 @@
           planting_date:      $('plantingDate').value,
           canopy_cover:       $('canopyCover').value,
           events:             state.events,
+          continued_without_history_events: runWithoutHistoryEvents,
         };
         const response = await fetch(apiUrl('/api/predict'), {
           method: 'POST',
@@ -3119,20 +3638,27 @@
         if (!data.ok) throw new Error(data.error || 'Prediction failed');
 
         const pred = data.prediction;
+        state.resultReady = true;
+        state.noHistoryEventsRun = runWithoutHistoryEvents;
+        document.body.classList.add('has-result');
         $('resultPanel').classList.remove('hidden');
         $('predPh').textContent        = Number(pred.predicted_ph).toFixed(3);
         $('predEc').textContent        = Number(pred.predicted_ec_ms).toFixed(4);
         $('gapHours').textContent      = Number(pred.gap_hours).toFixed(1);
         $('component').textContent     = pred.model_component;
+        setText('predictionTarget', prettyTime(payload.target_time));
+        setText('resultConfidence', runWithoutHistoryEvents ? 'No history events used' : 'Inputs passed readiness checks');
         $('predictionDownload').href   = apiUrl(data.downloads.prediction);
         $('explanationDownload').href  = apiUrl(data.downloads.explanation);
         $('appliedMasterDownload').href = apiUrl(data.downloads.applied_master);
         $('eventsDownload').href       = apiUrl(data.downloads.events);
         renderXai(pred.xai);
 
-        setStatus('predictStatus', 'Prediction ready', 'good');
+        setStatus('predictStatus', runWithoutHistoryEvents ? 'Prediction ready - no before-t0 events used' : 'Prediction ready', 'good');
         setStep('stepInputs', 'done');
         setStep('stepResult', 'done');
+        updateSummary();
+        $('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         setStatus('predictStatus', err.message, 'bad');
         showAlert('Prediction could not run', err.message);
@@ -3147,11 +3673,14 @@
         state.MIN_CLIMATE_H  = data.validation.min_climate_before_anchor_h;
         state.EVENT_WINDOW_H = data.validation.event_window_h;
       }
+      renderModelSummary(data.model);
+      updateSummary();
     }).catch(() => {/* use defaults */});
 
     // ── Init ──────────────────────────────────────────────────────────────────
     updateSummary();
     renderEvents();
+    renderModelSummary();
   </script>
 </body>
 </html>
