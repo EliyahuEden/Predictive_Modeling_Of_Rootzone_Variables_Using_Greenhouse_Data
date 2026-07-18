@@ -1,186 +1,182 @@
-# Predictive Modeling of Rootzone Variables Using Greenhouse Data
+# Predictive Modeling of Root-Zone Variables Using Greenhouse Data
 
-## Business problem
+## Abstract
 
-This project supports greenhouse irrigation and fertigation decisions by estimating root-zone chemistry between sparse manual measurements.
+This repository contains the research code, datasets, model artifacts, visualizations, and final academic deliverables for Project 14: predictive modeling of root-zone pH and electrical conductivity (EC) in a greenhouse environment.
 
-The practical decision is: given recent greenhouse climate, irrigation, fertilizer, canopy, and previous root-zone readings, estimate the current or near-future:
+The study is framed as a soft-sensing problem. Manual pH and EC measurements in the root zone are sparse, while greenhouse climate, irrigation, fertigation, canopy, and crop-age data are available at a substantially higher temporal resolution. The objective is to estimate short-horizon root-zone chemistry from a recent trusted measurement and the greenhouse conditions observed over the prediction interval.
 
-- pH
-- EC, measured as `ec_ms`
+Final written reports are stored in `docs/`. Local LaTeX build outputs under `report_latex/` and distribution builds under `dist/` are intentionally ignored by Git.
 
-These predictions can help decide whether fertigation, acid dosing, irrigation volume, or monitoring frequency should be adjusted before root-zone conditions drift too far.
+## Project Snapshot
 
-## Dataset
+| Category | Description |
+| --- | --- |
+| Research domain | Greenhouse irrigation and fertigation decision support |
+| Prediction targets | Root-zone pH and EC |
+| Modeling formulation | Anchor-to-target interval prediction |
+| Main dataset | `data/processed/master.csv` |
+| Temporal resolution | 10-minute greenhouse timeline |
+| Final exported model | 48h unified no-RH model |
+| Primary validation | Walk-forward temporal evaluation and skipped-interval holdout |
 
-The project combines raw greenhouse operation logs, weather data, microclimate data, canopy measurements, fertilizer schedules, and sparse pH/EC measurements.
+## Contents
+
+- [Research Objective](#research-objective)
+- [Data Sources](#data-sources)
+- [Methodology](#methodology)
+- [Key Results](#key-results)
+- [Repository Structure](#repository-structure)
+- [Running the Prediction Notebook](#running-the-prediction-notebook)
+- [Reproducing the Research Workflow](#reproducing-the-research-workflow)
+- [Representative Figures](#representative-figures)
+- [Generated and Local-Only Artifacts](#generated-and-local-only-artifacts)
+
+## Research Objective
+
+The study evaluates whether a data-driven model can provide accurate short-horizon forecasts of:
+
+- root-zone pH
+- root-zone EC, measured in mS/cm
+
+The operational use case is decision support for irrigation and fertigation management. Given a trusted pH/EC measurement at anchor time `t0`, the model predicts the root-zone state at a later target time `t1`, using weather, greenhouse microclimate, irrigation, fertilizer, canopy, and crop-age information observed or forecast over the interval.
+
+## Data Sources
+
+The project integrates heterogeneous greenhouse and agronomic data sources:
+
+| Data group | Examples |
+| --- | --- |
+| External climate | Weather and radiation files |
+| Greenhouse microclimate | Internal temperature, relative humidity, radiation, ET0, and soil temperature |
+| Operational management | Irrigation volume, fertilizer type, fertilizer mass, and acid inputs |
+| Crop-state measurements | Canopy cover and days after planting |
+| Laboratory/manual measurements | Sparse root-zone pH, EC, and nitrogen samples |
 
 Main modeling dataset:
 
-- File: `data/processed/master.csv`
-- Notebook working copy: `scripts/master.csv`
-- Grain: 10-minute timestamped greenhouse timeline
-- Rows: 16,682
-- Columns: 20
-- Date range: `2025-05-29 01:00:00` to `2025-09-21 21:10:00`
-- Labeled pH samples: 109
-- Labeled EC samples: 109
-- Rows with both pH and EC labels: 109
+| Property | Value |
+| --- | --- |
+| File | `data/processed/master.csv` |
+| Notebook copy | `scripts/master.csv` |
+| Rows | 16,693 |
+| Columns | 20 |
+| Date range | `2025-05-29 01:00:00` to `2025-09-21 23:00:00` |
+| Labeled pH samples | 109 |
+| Labeled EC samples | 109 |
+| Rows with both labels | 109 |
 
-Important caveats:
+### Data Limitations
 
-- The telemetry is dense, but the true pH/EC labels are sparse.
-- The model is trained as a soft sensor: it predicts changes from a known root-zone anchor measurement at time `t0` to a later time `t1`.
-- Holdout intervals are created from skipped labeled intervals, not from a large independent production dataset.
-- Some processed files are committed because the project is notebook-first and not yet a fully automated data pipeline.
+- The telemetry is dense, but the ground-truth pH/EC labels are sparse.
+- Validation is based on chronological walk-forward splits and skipped labeled intervals rather than a large independent production dataset.
+- The model estimates changes from a known anchor measurement; it does not replace direct sensing or agronomic judgment.
+- Several notebooks rely on relative paths because the repository remains notebook-centered rather than packaged as a fully automated research pipeline.
 
-Raw inputs include:
+## Methodology
 
-- External weather and radiation data
-- Greenhouse logger data
-- ET0, temperature, and relative humidity files
-- pH and EC measurement workbook
-- Irrigation and fertilizer schedule
-- Canopy cover values
-- Nitrogen samples
+The modeling workflow is organized into six stages:
 
-## Technical stack
+1. **Data ingestion**  
+   Raw weather, logger, fertigation, canopy, nitrogen, and pH/EC files are loaded from `data/raw/`.
 
-Core stack:
+2. **Microclimate modeling**  
+   Supporting greenhouse signals are estimated or validated, including internal radiation, internal air temperature, relative humidity, ET0, and soil temperature.
 
-- Python
-- Jupyter notebooks
-- pandas
-- NumPy
-- scikit-learn
-- XGBoost
-- matplotlib
-- seaborn
-- openpyxl
-- joblib
+3. **Master timeline construction**  
+   Climate signals, irrigation volume, fertilizer inputs, canopy cover, plant age, and sparse root-zone labels are merged into a unified 10-minute dataset.
 
-Supporting packages used in parts of the project:
+4. **Interval feature engineering**  
+   Prediction rows are constructed from anchor-target intervals. Features include anchor pH/EC, elapsed time, irrigation and fertilizer totals, ET0 and radiation summaries, soil-temperature behavior, canopy state, plant age, salinity buildup indicators, fertilizer recency, and pre-anchor history.
 
-- LightGBM
-- SHAP
-- Open-Meteo client packages
+5. **Unified pH/EC modeling**  
+   The final model predicts pH change and EC log-change from a shared feature set. The exported no-RH variant removes dependence on internal relative humidity by using a climate-demand proxy derived from temperature, radiation, and ET0.
 
-## Project structure
+6. **Temporal validation**  
+   Walk-forward validation preserves chronological ordering. Skipped-interval holdout tests evaluate performance on labeled intervals excluded from training.
+
+## Key Results
+
+Current exported summary: `scripts/exports/v8_final_unified_model_48h_no_rh_summary_with_ec_warmup30.csv`
+
+| Target | Warmup | MAE | RMSE | Naive MAE | Gain | Gain % | R2 | N test | Holdout MAE | Holdout R2 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| pH | 52 | 0.3297 | 0.4143 | 0.8768 | 0.5472 | 62.40 | 0.9321 | 57 | 0.2877 | 0.9325 |
+| EC | 52 | 0.1269 | 0.1707 | 0.1961 | 0.0692 | 35.28 | 0.9818 | 57 | 0.1314 | 0.9523 |
+| EC warmup30 | 30 | 0.1702 | 0.2755 | 0.2467 | 0.0765 | 31.00 | 0.9456 | 79 | - | - |
+
+Main findings:
+
+- pH can be estimated from interval features, previous pH, climate, irrigation, and acid/fertilizer signals with a substantial improvement over the naive carry-forward baseline.
+- EC prediction benefits from interval-level fertigation, irrigation, climate-demand, and salinity-history features.
+- The 48h no-RH exported model preserves strong EC performance without requiring internal relative humidity at inference time.
+- The EC warmup-30 stress check remains important because early intervals are sensitive to which labeled rows are excluded from training.
+
+## Repository Structure
 
 ```text
 data/
   raw/                         Original greenhouse, weather, fertigation, and lab files
-  processed/                   Cleaned and modeled datasets used by later notebooks
+  processed/                   Cleaned datasets and model-ready timelines
 
 scripts/
+  *.ipynb                      Data exploration, microclimate, and root-zone modeling notebooks
   master.csv                   Notebook-local copy of the final merged dataset
-  *.ipynb                      Data validation, microclimate, and root-zone modeling notebooks
-  exports/                     Final root-zone model evaluation CSVs and predictions
-  saved_model/                 Serialized final model and metadata
+  exports/                     Final evaluation CSVs, predictions, and feature importances
+  saved_model/                 Serialized 48h model package with RH dependency
+  saved_model_no_rh/           Serialized 48h model package without RH dependency
 
 plots/
-  micro climate results/       Microclimate model figures
+  micro climate results/       Microclimate performance figures
   model architecture and workflow/
-                               Architecture, data sparsity, and workflow diagrams
-  PH& EC_Results_24H_Version/  Final 24h root-zone plots and exports
-  PH& EC_Results_48H_Version/  Final 48h root-zone plots and exports
+                               Pipeline, architecture, and validation diagrams
+  PH& EC_Results_48H_Version/  Final root-zone evaluation plots and exports
+  project_summary_visualizations/
+                               Summary figures for project-level communication
 
-rootzone presentation/
-  rootzone_presentation.html   Standalone project presentation
+poster/
+  *.pptx, *.pdf                Final project poster
+
+docs/
+  *.pdf, *.docx                Final written reports and academic deliverables
 
 README.md
 ```
 
-## Method
+## Running the Prediction Notebook
 
-The project is built as a staged modeling workflow.
+The most portable prediction package is:
 
-1. **Ingest raw data**
-   Raw weather, logger, fertigation, canopy, and pH/EC files are loaded from `data/raw/`.
+```text
+scripts/saved_model_no_rh/
+```
 
-2. **Build support signals**
-   Upstream notebooks estimate or validate greenhouse context variables such as soil temperature, internal radiation, internal air temperature, relative humidity, and ET0.
+It contains:
 
-3. **Create the master timeline**
-   Climate signals, irrigation volume, fertilizer additions, canopy cover, plant age, and sparse pH/EC labels are merged into `master.csv`.
+- `predict_rootzone.ipynb`
+- `master.csv`
+- `v8_unified_model_48h_no_rh_shared_model.joblib`
+- `v8_unified_model_48h_no_rh_model_meta.json`
+- `micro_climate_3day_unified_model.joblib`
 
-4. **Engineer interval features**
-   Root-zone models are trained on intervals from anchor time `t0` to target time `t1`. Features include:
+Minimal package installation:
 
-   - anchor pH and EC
-   - elapsed hours
-   - irrigation and fertilizer totals between `t0` and `t1`
-   - ET0 and radiation summaries
-   - soil temperature behavior
-   - canopy and plant-age features
-   - salt buildup and fertilizer recency features
-   - pre-anchor history features
+```bash
+python -m pip install numpy pandas joblib scikit-learn xgboost
+```
 
-5. **Train unified pH and EC model**
-   The final root-zone model is a unified multi-output model that predicts both pH change and EC log-change from the same rows and the same feature set.
+Typical execution:
 
-6. **Validate with walk-forward testing**
-   The model is evaluated using walk-forward validation. Training grows through time, and predictions are made only using information available up to the prediction point.
+1. Open `scripts/saved_model_no_rh/predict_rootzone.ipynb`.
+2. Keep the model files, metadata file, and input CSV in the same folder.
+3. Set `TARGET_TIME` or `ANCHOR_TIME` in the first notebook cell only if a specific prediction interval is required.
+4. Run all cells and read the printed pH and EC prediction summary.
 
-7. **Validate with skipped-interval holdout**
-   Separate holdout intervals are removed from training and predicted later. The project includes both 24h and 48h holdout versions.
+The model was trained for predictions up to 48 hours after a known pH/EC anchor measurement. The input CSV must include at least 48 hours of history before the selected anchor row.
 
-## Key metrics
+## Reproducing the Research Workflow
 
-Business metrics:
-
-- pH prediction error, measured by MAE
-- EC prediction error, measured by MAE
-- Improvement over naive carry-forward from the last measured pH/EC value
-- Holdout performance on skipped intervals
-- Stability in early walk-forward sections, especially the EC warmup-30 stress check
-
-Model metrics:
-
-- MAE
-- RMSE
-- R2
-- Naive MAE
-- Gain over naive MAE
-- Holdout MAE
-- Holdout R2
-
-Current final exports:
-
-- `scripts/exports/v8_final_unified_model_summary_with_ec_warmup30.csv`
-- `scripts/exports/v8_final_unified_model_48h_summary_with_ec_warmup30.csv`
-
-### Final 24h unified model
-
-| Target | Warmup | MAE | RMSE | R2 | Holdout MAE | Holdout R2 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| pH | 52 | 0.2976 | 0.3936 | 0.9388 | 0.3165 | 0.9364 |
-| EC | 52 | 0.1251 | 0.1739 | 0.9811 | 0.2052 | 0.9237 |
-| EC stress | 30 | 0.1625 | 0.2616 | 0.9510 | - | - |
-
-### Final 48h unified model
-
-| Target | Warmup | MAE | RMSE | R2 | Holdout MAE | Holdout R2 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| pH | 52 | 0.3086 | 0.4066 | 0.9347 | 0.2971 | 0.9328 |
-| EC | 52 | 0.1200 | 0.1620 | 0.9836 | 0.1275 | 0.9605 |
-| EC warmup30 | 30 | 0.1616 | 0.2710 | 0.9474 | - | - |
-
-## Results
-
-Main findings:
-
-- pH can be predicted accurately from interval features, previous pH, climate, irrigation, and acid/fertilizer signals.
-- EC benefits strongly from the 48h holdout setup because longer skipped intervals expose the model to more realistic salinity movement.
-- The final 48h model improves EC holdout MAE from `0.2052` in the 24h version to `0.1275`.
-- The 24h model keeps the best pH walk-forward score, but the 48h model has better pH holdout MAE.
-- The EC warmup-30 stress check remains important because early August intervals are sensitive to which skipped rows are removed from training.
-
-## How to run
-
-The repository does not yet include a pinned `requirements.txt` or `environment.yml`.
-
-Recommended local setup:
+The repository does not currently include a fully pinned research environment file. A practical local setup is:
 
 ```bash
 python -m venv .venv
@@ -189,70 +185,47 @@ python -m pip install --upgrade pip
 python -m pip install jupyterlab pandas numpy matplotlib seaborn scikit-learn xgboost lightgbm shap openpyxl openmeteo-requests requests-cache retry-requests joblib
 ```
 
-Run notebooks from the `scripts/` directory because several notebooks read `master.csv` by relative path:
+Run notebooks from the `scripts/` directory because several notebooks read local files by relative path:
 
 ```bash
 cd scripts
 jupyter lab
 ```
 
-Suggested reproduction order:
+Suggested notebook order:
 
 1. `soil_temp_C_pred.ipynb`
 2. `micro_climate_internal_radiation_model.ipynb`
 3. `micro_climate_model.ipynb`
 4. `micro_climate_real_time_1day.ipynb`
 5. `micro_climate_real_time_3day.ipynb`
-6. Verify or rebuild `master.csv`
-7. Run `Continuous_Rootzone_V8_Unified_Model.ipynb` for the 24h final model
-8. Run `Continuous_Rootzone_V8_Unified_Model_48H.ipynb` for the 48h final model
+6. verify or rebuild `master.csv`
+7. `Continuous_Rootzone_V8_Unified_Model.ipynb`
+8. `Continuous_Rootzone_V8_Unified_Model_48H.ipynb`
+9. `Continuous_Rootzone_V8_Unified_Model_48H_NoRH.ipynb`
 
-Saved 48h model artifacts:
-
-```text
-scripts/saved_model/v8_unified_model_48h_shared_model.joblib
-scripts/saved_model/v8_unified_model_48h_model_meta.json
-```
-
-## plots
+## Representative Figures
 
 Model architecture:
 
 ![Model architecture](plots/model%20architecture%20and%20workflow/model%20architecture.png)
 
-Walk-forward workflow:
+Walk-forward validation:
 
 ![Walk-forward workflow](plots/model%20architecture%20and%20workflow/walk%20forward.png)
 
-48h pH prediction results:
+Combined 48h pH/EC prediction results:
 
-![48h pH true vs predicted](plots/PH%26%20EC_Results_48H_Version/PH/48h_ph_true_vs_predicted.png)
+![Combined 48h pH and EC true vs predicted](plots/PH%26%20EC_Results_48H_Version/combined_ph_ec_true_vs_pred_2x2.png)
 
-48h pH walk-forward index series:
+48h pH time-indexed prediction:
 
-![48h pH actual vs predicted by index](plots/PH%26%20EC_Results_48H_Version/PH/48h_ph_actual_vs_predicted_index.png)
+![48h pH actual vs predicted by index](plots/PH%26%20EC_Results_48H_Version/PH/ph_actual_vs_pred_index.png)
 
-48h EC prediction results:
+48h EC time-indexed prediction:
 
-![48h EC true vs predicted](plots/PH%26%20EC_Results_48H_Version/EC/48h_ec_true_vs_predicted.png)
+![48h EC actual vs predicted by index](plots/PH%26%20EC_Results_48H_Version/EC/ec_actual_vs_pred_index.png)
 
-48h EC walk-forward index series:
+48h holdout EC parity:
 
-![48h EC actual vs predicted by index](plots/PH%26%20EC_Results_48H_Version/EC/48h_ec_actual_vs_predicted_index.png)
-
-48h holdout pH results:
-
-![48h holdout pH actual vs predicted](plots/PH%26%20EC_Results_48H_Version/HOLDOUT_PH/48h_holdout_ph_actual_vs_predicted.png)
-
-48h holdout pH true vs predicted:
-
-![48h holdout pH true vs predicted](plots/PH%26%20EC_Results_48H_Version/HOLDOUT_PH/48h_holdout_ph_true_vs_predicted.png)
-
-48h holdout EC results:
-
-![48h holdout EC](plots/PH%26%20EC_Results_48H_Version/HOLDOUT_EC/48h_holdout_ec_true_vs_predicted.png)
-
-48h holdout EC interval series:
-
-![48h holdout EC actual vs predicted](plots/PH%26%20EC_Results_48H_Version/HOLDOUT_EC/48h_holdout_ec_actual_vs_predicted.png)
-
+![48h holdout EC true vs predicted](plots/PH%26%20EC_Results_48H_Version/EC/holdout_ec_true_vs_pred.png)
