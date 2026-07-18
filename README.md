@@ -6,8 +6,6 @@ This repository contains the research code, datasets, model artifacts, visualiza
 
 The study is framed as a soft-sensing problem. Manual pH and EC measurements in the root zone are sparse, while greenhouse climate, irrigation, fertigation, canopy, and crop-age data are available at a substantially higher temporal resolution. The objective is to estimate short-horizon root-zone chemistry from a recent trusted measurement and the greenhouse conditions observed over the prediction interval.
 
-Final written reports are stored in `docs/`. Local LaTeX build outputs under `report_latex/` and distribution builds under `dist/` are intentionally ignored by Git.
-
 ## Project Snapshot
 
 | Category | Description |
@@ -30,7 +28,6 @@ Final written reports are stored in `docs/`. Local LaTeX build outputs under `re
 - [Running the Prediction Notebook](#running-the-prediction-notebook)
 - [Reproducing the Research Workflow](#reproducing-the-research-workflow)
 - [Representative Figures](#representative-figures)
-- [Generated and Local-Only Artifacts](#generated-and-local-only-artifacts)
 
 ## Research Objective
 
